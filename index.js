@@ -36,32 +36,15 @@ import {
 } from './sendScheduler.js';
 import { cacheMessage, getCachedMessage, createDeletedMessageNotification } from './utils/deletedMessageHandler.js';
 
-function sanitizeLogValue(value) {
-  if (typeof value !== 'string') return value;
-  return value
-    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-}
-
-function patchConsoleForCleanText() {
-  for (const method of ['log', 'info', 'warn', 'error']) {
-    const original = console[method].bind(console);
-    console[method] = (...args) => original(...args.map(sanitizeLogValue));
-  }
-}
-
-patchConsoleForCleanText();
-
 let sock;
 let qrDataURL = null;
 let BOT_PHONE = ''; // nomor bot (untuk wa.me link), terisi saat koneksi open
-const activeGuess = new Map(); // userJid Ã¢â€ â€™ { word }
-const userScores = {}; // userJid Ã¢â€ â€™ skor
-const gameSessions = new Map(); // userJid Ã¢â€ â€™ { game, jawaban, soal }
-const gameScores = {}; // userJid Ã¢â€ â€™ { name, score }
+const activeGuess = new Map(); // userJid → { word }
+const userScores = {}; // userJid → skor
+const gameSessions = new Map(); // userJid → { game, jawaban, soal }
+const gameScores = {}; // userJid → { name, score }
 
-// Cache for view-once messages: chatJid Ã¢â€ â€™ Array of { message, timestamp }
+// Cache for view-once messages: chatJid → Array of { message, timestamp }
 const viewOnceCache = new Map();
 const MAX_CACHE_SIZE = 100; // Max messages per chat
 
@@ -141,7 +124,7 @@ function reloadEnvConfig() {
     STORY_VIEW_ALL = STORY_AUTO_SENDERS_RAW.includes('*');
     STORY_AUTO_SENDERS = STORY_AUTO_SENDERS_RAW.filter((jid) => jid !== '*');
     OWNER_NUMBER = process.env.OWNER_NUMBER || '';
-    console.log('Ã°Å¸â€â€ž Konfigurasi .env berhasil di-reload');
+    console.log('🔄 Konfigurasi .env berhasil di-reload');
     return true;
   } catch (e) {
     console.error('Gagal reload .env:', e);
@@ -191,10 +174,10 @@ function findRecentViewOnce(chatJid) {
 
 async function autoSendViewOnceAsFile(sock, remoteJid, msg) {
   try {
-    console.log('Ã°Å¸â€â€ž Auto-send view-once triggered for', remoteJid);
+    console.log('🔄 Auto-send view-once triggered for', remoteJid);
     const msgContent = msg.message;
     if (!msgContent || !(msgContent.viewOnceMessage || msgContent.viewOnceMessageV2)) {
-      console.log('Ã¢ÂÅ’ No view-once message found');
+      console.log('❌ No view-once message found');
       return false;
     }
 
@@ -203,7 +186,7 @@ async function autoSendViewOnceAsFile(sock, remoteJid, msg) {
     else if (msgContent.viewOnceMessageV2) unwrapped = msgContent.viewOnceMessageV2.message;
 
     if (!unwrapped) {
-      console.log('Ã¢ÂÅ’ Failed to unwrap view-once message');
+      console.log('❌ Failed to unwrap view-once message');
       return false;
     }
 
@@ -238,7 +221,7 @@ async function autoSendViewOnceAsFile(sock, remoteJid, msg) {
       mediaType = 'sticker';
       mimeType = 'image/webp';
     } else {
-      console.log('Ã¢ÂÅ’ Unsupported media type in view-once');
+      console.log('❌ Unsupported media type in view-once');
       return false;
     }
 
@@ -283,12 +266,12 @@ async function autoSendViewOnceAsFile(sock, remoteJid, msg) {
     }
 
     await sock.sendMessage(remoteJid, payload, { quoted: msg });
-    await sock.sendMessage(remoteJid, { text: 'Ã¢Å“â€¦ Auto-convert: view-once dikirim sebagai file biasa.' }, { quoted: msg });
-    console.log('Ã¢Å“â€¦ Auto-send view-once completed');
+    await sock.sendMessage(remoteJid, { text: '✅ Auto-convert: view-once dikirim sebagai file biasa.' }, { quoted: msg });
+    console.log('✅ Auto-send view-once completed');
     return true;
   } catch (e) {
     console.error('autoSendViewOnceAsFile error:', e);
-    await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ Gagal auto-convert view-once: ${e.message}` }, { quoted: msg });
+    await sock.sendMessage(remoteJid, { text: `❌ Gagal auto-convert view-once: ${e.message}` }, { quoted: msg });
     return false;
   }
 }
@@ -474,7 +457,7 @@ function handleKhsMessage(sock, chatMessage, remoteJid) {
     const args = chatMessage.slice(4).trim();
     if (!args) {
       void khsSafeSend(sock, remoteJid, {
-        text: 'Ã°Å¸â€œâ€ž *Scrap KRS/KHS/Transkrip/KTM SIAKAD*\n\nKirim pesan berisi kredensial SIAKAD:\n\nUsername: email@domain.com\nPassword: password_siakad\n\nSetelah selesai, bot mengirim ZIP berisi PDF KRS, KHS, Transkrip & KTM.',
+        text: '📄 *Scrap KRS/KHS/Transkrip/KTM SIAKAD*\n\nKirim pesan berisi kredensial SIAKAD:\n\nUsername: email@domain.com\nPassword: password_siakad\n\nSetelah selesai, bot mengirim ZIP berisi PDF KRS, KHS, Transkrip & KTM.',
       });
       return true;
     }
@@ -506,7 +489,7 @@ function cleanupKhsOutput() {
       const stat = fs.statSync(fullPath);
       if (now - stat.mtimeMs > KHS_OUTPUT_TTL_MS) {
         fs.rmSync(fullPath, { recursive: true, force: true });
-        console.log(`Ã°Å¸Â§Â¹ Output KHS dihapus (umur >3 hari): ${name}`);
+        console.log(`🧹 Output KHS dihapus (umur >3 hari): ${name}`);
       }
     }
   } catch (e) {
@@ -517,14 +500,14 @@ function cleanupKhsOutput() {
 // ===== MENU CONFIGURATION =====
 const MENU_CATEGORIES = {
   ai: {
-    emoji: '[AI]',
+    emoji: '🤖',
     title: 'AI & CHAT',
     commands: [
       { cmd: '/ai [Pesan]', desc: 'Chat dengan AI' }
     ]
   },
   edlink: {
-    emoji: '[AKADEMIK]',
+    emoji: '📚',
     title: 'AKADEMIK',
     commands: [
       { cmd: '/tugas', desc: 'Cek tugas/quiz terbuka dari EdLink' },
@@ -534,7 +517,7 @@ const MENU_CATEGORIES = {
     ]
   },
   reminder: {
-    emoji: '[REMINDER]',
+    emoji: '⏰',
     title: 'REMINDER',
     commands: [
       { cmd: '/list', desc: 'Lihat semua jadwal reminder' },
@@ -543,18 +526,18 @@ const MENU_CATEGORIES = {
     ]
   },
   group: {
-    emoji: '[GRUP]',
+    emoji: '👥',
     title: 'GRUP MANAGEMENT',
     commands: [
       { cmd: '/add', desc: 'Tambah member ke grup' },
       { cmd: '/kick', desc: 'Keluarkan member dari grup' },
-      { cmd: '/tagall', desc: 'Tag semua member (hanya grup)' },
+      { cmd: '/tagall', desc: 'Tag semua member (hanya grup!)' },
       { cmd: '/new "Nama Grup"', desc: 'Buat grup baru dari file txt' },
       { cmd: '/getAllMember', desc: 'Export member grup ke txt' }
     ]
   },
   notes: {
-    emoji: '[NOTES]',
+    emoji: '📝',
     title: 'NOTES',
     commands: [
       { cmd: '/notes <teks>', desc: 'Buat note baru' },
@@ -564,7 +547,7 @@ const MENU_CATEGORIES = {
     ]
   },
   scheduler: {
-    emoji: '[SEND]',
+    emoji: '📨',
     title: 'PESAN TERJADWAL',
     commands: [
       { cmd: '/send <nomor>', desc: 'Jadwalkan kirim pesan ke nomor WA' },
@@ -573,7 +556,7 @@ const MENU_CATEGORIES = {
     ]
   },
   media: {
-    emoji: '[MEDIA]',
+    emoji: '📎',
     title: 'MEDIA & FILE',
     commands: [
       { cmd: '/see', desc: 'Kirim file sekali dilihat sebagai file biasa (reply pesan)' },
@@ -582,7 +565,7 @@ const MENU_CATEGORIES = {
     ]
   },
   owner: {
-    emoji: '[OWNER]',
+    emoji: '🔐',
     title: 'OWNER ONLY',
     commands: [
       { cmd: '/rahasia', desc: 'Lihat/edit konfigurasi .env via WhatsApp' },
@@ -591,7 +574,7 @@ const MENU_CATEGORIES = {
     ]
   },
   games: {
-    emoji: '[GAME]',
+    emoji: '🎮',
     title: 'PERMAINAN',
     commands: [
       { cmd: '/asahotak', desc: 'Asah Otak' },
@@ -617,65 +600,30 @@ const MENU_CATEGORIES = {
 };
 
 function generateMenu(userName, isGroup) {
-  const lines = [
-    '========================================',
-    `Halo ${isGroup ? `@${userName}` : userName}!`,
-    'Berikut menu yang tersedia:',
-    '========================================',
-    '',
-  ];
+  let menu = `╔═══════════════════════════════════╗\n`;
+  menu += `║  👋 Halo ${isGroup ? `@${userName}` : userName}!\n`;
+  menu += `║  Berikut adalah menu yang tersedia:\n`;
+  menu += `╚═══════════════════════════════════╝\n\n`;
 
-  Object.values(MENU_CATEGORIES).forEach((category) => {
-    lines.push(`${category.emoji} *${category.title}*`);
-    lines.push('----------------------------------------');
-    category.commands.forEach((command) => {
-      lines.push(`  ${command.cmd}`);
-      lines.push(`    - ${command.desc}`);
+  Object.values(MENU_CATEGORIES).forEach(category => {
+    menu += `${category.emoji} *${category.title}*\n`;
+    menu += `${'─'.repeat(35)}\n`;
+    category.commands.forEach(cmd => {
+      menu += `  ${cmd.cmd}\n    └─ ${cmd.desc}\n`;
     });
-    lines.push('');
+    menu += `\n`;
   });
 
-  lines.push('========================================');
-  lines.push('Tips: Ketik perintah untuk memulai.');
+  menu += `═══════════════════════════════════\n`;
+  menu += `💡 *Tips:* Ketik perintah untuk memulai!\n`;
 
-  return lines.join('\n');
-}
-
-const OUTBOUND_TEXT_KEYS = new Set(['text', 'caption', 'footer', 'title', 'subtitle']);
-
-function sanitizeOutboundText(value) {
-  return value
-    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '')
-    .replace(/A\?\?|A\?|\?+/g, '')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-function sanitizeOutboundContent(content) {
-  if (!content || typeof content !== 'object' || Buffer.isBuffer(content)) return content;
-  if (Array.isArray(content)) return content.map(sanitizeOutboundContent);
-
-  const sanitized = { ...content };
-  for (const [key, value] of Object.entries(sanitized)) {
-    if (typeof value === 'string' && OUTBOUND_TEXT_KEYS.has(key)) {
-      sanitized[key] = sanitizeOutboundText(value);
-    } else if (value && typeof value === 'object' && !Buffer.isBuffer(value)) {
-      sanitized[key] = sanitizeOutboundContent(value);
-    }
-  }
-  return sanitized;
-}
-
-function patchSendMessageForCleanText(sock) {
-  const sendMessage = sock.sendMessage.bind(sock);
-  sock.sendMessage = (jid, content, options) => sendMessage(jid, sanitizeOutboundContent(content), options);
+  return menu;
 }
 
 const app = express();
 app.use(express.static(__dirname));
 
-// halaman viewer QR Ã¢â‚¬â€ auto refresh
+// halaman viewer QR — auto refresh
 app.get('/qr', (req, res) => {
   if (isLoggedIn) {
     return res.send('<h2>Bot sudah login.</h2>');
@@ -710,32 +658,32 @@ const PUBLIC_HOST =
     process.env.FLY_REGION &&
     `https://${process.env.FLY_APP_NAME}.fly.dev` ||
   `localhost:${PORT}`;
-app.listen(PORT, '0.0.0.0', () => console.log(`Ã°Å¸Å’Â QR viewer: http://${PUBLIC_HOST}/qr`));
+app.listen(PORT, '0.0.0.0', () => console.log(`🌐 QR viewer: http://${PUBLIC_HOST}/qr`));
 
 async function connectToWhatsApp() {
   // ===== LOG AUTO VIEW-ONCE & AUTO VIEW STORY CONFIG =====
-  console.log('\n' + 'Ã¢â€¢Â'.repeat(60));
-  console.log('Ã°Å¸â€œÂ± AUTO VIEW CONFIGURATION:');
-  console.log('Ã¢â€â‚¬'.repeat(60));
+  console.log('\n' + '═'.repeat(60));
+  console.log('📱 AUTO VIEW CONFIGURATION:');
+  console.log('─'.repeat(60));
   
   if (process.env.AUTO_VIEW_ONCE_JIDS) {
-    console.log(`Ã¢Å“â€¦ AUTO VIEW-ONCE: ${VIEW_ONCE_AUTO_SENDERS.join(', ')}`);
+    console.log(`✅ AUTO VIEW-ONCE: ${VIEW_ONCE_AUTO_SENDERS.join(', ')}`);
   } else {
-    console.log(`Ã¢ÂÂ¸Ã¯Â¸Â  AUTO VIEW-ONCE: disabled (set AUTO_VIEW_ONCE_JIDS in .env)`);
+    console.log(`⏸️  AUTO VIEW-ONCE: disabled (set AUTO_VIEW_ONCE_JIDS in .env)`);
   }
   
   if (STORY_VIEW_ALL) {
-    console.log(`Ã¢Å“â€¦ AUTO VIEW STORY: * (semua story)`);
+    console.log(`✅ AUTO VIEW STORY: * (semua story)`);
   } else if (process.env.AUTO_VIEW_STORY_JIDS && STORY_AUTO_SENDERS.length > 0) {
-    console.log(`Ã¢Å“â€¦ AUTO VIEW STORY: ${STORY_AUTO_SENDERS.join(', ')}`);
+    console.log(`✅ AUTO VIEW STORY: ${STORY_AUTO_SENDERS.join(', ')}`);
   } else {
-    console.log(`Ã¢ÂÂ¸Ã¯Â¸Â  AUTO VIEW STORY: disabled (set AUTO_VIEW_STORY_JIDS in .env)`);
+    console.log(`⏸️  AUTO VIEW STORY: disabled (set AUTO_VIEW_STORY_JIDS in .env)`);
   }
   
-  console.log(`Ã°Å¸â€œÂ DELETED MESSAGE: ${DELETED_MESSAGE_DETECTION ? 'Ã¢Å“â€¦ Aktif' : 'Ã¢ÂÂ¸Ã¯Â¸Â  Nonaktif'}`);
-  console.log(`Ã°Å¸â€Â OWNER NUMBER: ${OWNER_NUMBER ? `Ã¢Å“â€¦ ${OWNER_NUMBER}` : 'Ã¢ÂÂ¸Ã¯Â¸Â  Tidak diset'}`);
+  console.log(`📝 DELETED MESSAGE: ${DELETED_MESSAGE_DETECTION ? '✅ Aktif' : '⏸️  Nonaktif'}`);
+  console.log(`🔐 OWNER NUMBER: ${OWNER_NUMBER ? `✅ ${OWNER_NUMBER}` : '⏸️  Tidak diset'}`);
   
-  console.log('Ã¢â€¢Â'.repeat(60) + '\n');
+  console.log('═'.repeat(60) + '\n');
   // ========================================
 
   const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
@@ -754,15 +702,13 @@ async function connectToWhatsApp() {
     patchMessageBeforeSending: (msg) => msg,
   });
 
-  patchSendMessageForCleanText(sock);
-
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect } = update;
 
-    console.log('Ã°Å¸â€œÂ¶ Status koneksi:', connection);
+    console.log('📶 Status koneksi:', connection);
 
     if (update.qr && !isLoggedIn) {
-      console.log('Ã°Å¸â€Â³ QR diterima Ã¢â‚¬â€ generate base64');
+      console.log('🔳 QR diterima — generate base64');
 
       QRCode.toDataURL(update.qr, (err, url) => {
         if (err) {
@@ -771,12 +717,12 @@ async function connectToWhatsApp() {
         }
 
         qrDataURL = url;
-        console.log('Ã¢Å“â€¦ QR updated (base64)');
+        console.log('✅ QR updated (base64)');
       });
     }
 
     if (lastDisconnect?.error) {
-      console.error('Ã°Å¸â€Â´ Error:', lastDisconnect.error?.output?.payload?.message || lastDisconnect.error.message);
+      console.error('🔴 Error:', lastDisconnect.error?.output?.payload?.message || lastDisconnect.error.message);
     }
     if (connection === 'open') {
       isLoggedIn = true;
@@ -787,13 +733,13 @@ async function connectToWhatsApp() {
         const uid = sock?.user?.id || sock?.user?.jid || '';
         if (uid) {
           BOT_PHONE = uid.split(':')[0].split('@')[0].replace(/[^0-9]/g, '');
-          console.log(`Ã°Å¸â€œÂ± Bot phone: ${BOT_PHONE}`);
+          console.log(`📱 Bot phone: ${BOT_PHONE}`);
         }
       } catch (e) {
         console.error('Gagal tangkap nomor bot:', e);
       }
 
-      console.log('Ã¢Å“â€¦ Terhubung ke WhatsApp!');
+      console.log('✅ Terhubung ke WhatsApp!');
       // start scheduler when connection opens
       try {
         startScheduler(sock).catch((err) => console.error('startScheduler failed:', err));
@@ -807,9 +753,9 @@ async function connectToWhatsApp() {
     if (connection === 'close') {
       qrDataURL = null; // reset QR
       const reason = lastDisconnect?.error?.output?.statusCode;
-      console.log('Ã¢ÂÅ’ Koneksi tertutup. Alasan:', reason);
+      console.log('❌ Koneksi tertutup. Alasan:', reason);
       if (reason !== DisconnectReason.loggedOut) {
-        console.log('Ã°Å¸â€Â Mencoba reconnect dalam 5 detik...');
+        console.log('🔁 Mencoba reconnect dalam 5 detik...');
         setTimeout(() => {
 connectToWhatsApp();
 
@@ -834,7 +780,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           /* ignore */
         }
       } else {
-        console.log('Ã°Å¸â€â€™ Telah logout dari WhatsApp. Harap login ulang secara manual.');
+        console.log('🔒 Telah logout dari WhatsApp. Harap login ulang secara manual.');
       }
     }
   });
@@ -849,7 +795,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
 
     const isCommand = message.startsWith('/');
 
-    // Ã¢Ââ€” Skip hanya jika pesan dari bot DAN BUKAN command
+    // ❗ Skip hanya jika pesan dari bot DAN BUKAN command
     if (isFromMe && !isCommand) return;
 
     // Auto view story detection for status broadcast messages
@@ -858,9 +804,9 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
       const senderJid = msg.key.participant;
       if (isAutoStorySender(senderJid)) {
         try {
-          console.log('Ã°Å¸â€â€ž Auto-viewing story from', senderJid);
+          console.log('🔄 Auto-viewing story from', senderJid);
           await sock.readMessages([msg.key]);
-          console.log('Ã¢Å“â€¦ Auto-viewed story from', senderJid);
+          console.log('✅ Auto-viewed story from', senderJid);
         } catch (e) {
           console.error('Error auto-viewing story:', e);
         }
@@ -870,11 +816,11 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
     // Cache view-once messages for /see command (outside try block to avoid hoisting issues)
     const msgContent = msg.message;
     if (msgContent && Object.keys(msgContent).length > 0 && !isFromMe) {
-      console.log('Ã°Å¸â€œÂ¨ msg.message keys:', Object.keys(msgContent));
+      console.log('📨 msg.message keys:', Object.keys(msgContent));
     }
     const remoteJidCache = msg.key.remoteJid;
     if (msgContent && (msgContent.viewOnceMessage || msgContent.viewOnceMessageV2)) {
-      console.log('Ã°Å¸â€Â View-once detected:', JSON.stringify({
+      console.log('🔍 View-once detected:', JSON.stringify({
         msgContentKeys: Object.keys(msgContent),
         remoteJid: remoteJidCache,
         remoteJidAlt: msg.key.remoteJidAlt,
@@ -887,7 +833,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
 
       const senderJid = msg.key.participant || remoteJidCache;
       const senderJidAlt = msg.key.participantAlt || (remoteJidCache.endsWith('@g.us') ? undefined : msg.key.remoteJidAlt);
-      console.log('Ã°Å¸â€Â Auto-send check:', JSON.stringify({
+      console.log('🔍 Auto-send check:', JSON.stringify({
         senderJid: senderJid?.split('@')[0],
         senderJidAlt: senderJidAlt?.split('@')[0],
         isAutoViewOnceSender_primary: senderJid ? isAutoViewOnceSender(senderJid) : false,
@@ -896,7 +842,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
       }));
       if (!isFromMe && (isAutoViewOnceSender(senderJid) || (senderJidAlt && isAutoViewOnceSender(senderJidAlt)))) {
         try {
-          console.log('Ã°Å¸â€â€ž Auto-send view-once triggered for', senderJid, 'in', remoteJidCache);
+          console.log('🔄 Auto-send view-once triggered for', senderJid, 'in', remoteJidCache);
           await autoSendViewOnceAsFile(sock, remoteJidCache, msg);
         } catch (e) {
           console.error('Error auto-sending view-once:', e);
@@ -968,7 +914,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
       if (handleKhsMessage(sock, chatMessage, remoteJid)) return;
 
       // === PESAN TERJADWAL (SCHEDULED SEND) ===
-      // /batal Ã¢â‚¬â€ batalkan sesi aktif
+      // /batal — batalkan sesi aktif
       if ((chatMessage === '/batal' || chatMessage === '/cancelsend') && await cancelSendSession(sock, remoteJid, numberUser)) {
         return;
       }
@@ -983,7 +929,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
       // /sendcancel <id>
       if (chatMessage.startsWith('/sendcancel')) {
         const id = parseInt(chatMessage.split(' ')[1], 10);
-        const result = Number.isNaN(id) ? 'Ã¢ÂÅ’ Format: /sendcancel <id>' : await cancelSend(id, numberUser);
+        const result = Number.isNaN(id) ? '❌ Format: /sendcancel <id>' : await cancelSend(id, numberUser);
         await sock.sendMessage(remoteJid, { text: result }, { quoted: m.messages[0] });
         return;
       }
@@ -996,10 +942,10 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             remoteJid,
             {
               text:
-                'Ã°Å¸â€œÂ¨ *Kirim Pesan Terjadwal*\n\n' +
+                '📨 *Kirim Pesan Terjadwal*\n\n' +
                 'Format: /send <nomor>\nContoh: /send 6281234567890\n\n' +
                 'Bot akan minta teks pesan & waktu pengiriman.\n\n' +
-                'Ã¢â‚¬Â¢ /sendlist Ã¢â‚¬â€ lihat daftar\nÃ¢â‚¬Â¢ /sendcancel <id> Ã¢â‚¬â€ batalkan',
+                '• /sendlist — lihat daftar\n• /sendcancel <id> — batalkan',
             },
             { quoted: m.messages[0] },
           );
@@ -1028,7 +974,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
       // === /rahasia command (owner only, private chat only) ===
       if (chatMessage.startsWith('/rahasia')) {
         if (remoteJid.endsWith('@g.us')) {
-          await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Perintah /rahasia hanya bisa digunakan di chat pribadi dengan bot, bukan di grup.' }, { quoted: m.messages[0] });
+          await sock.sendMessage(remoteJid, { text: '❌ Perintah /rahasia hanya bisa digunakan di chat pribadi dengan bot, bukan di grup.' }, { quoted: m.messages[0] });
           return;
         }
         // Di private chat, remoteJid = pengirim (bisa LID atau PN).
@@ -1049,29 +995,29 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             j.split('@')[0].split(':')[0].replace(/[^0-9]/g, '')
           ))];
 
-          console.log(`Ã°Å¸â€Â /rahasia cek: sender=${senderNums.join('|')}, OWNER_NUMBER(file)=${fileOwner || '(kosong)'}, remoteJid=${remoteJid}, alt=${m.messages[0].key.remoteJidAlt || '-'}`);
+          console.log(`🔐 /rahasia cek: sender=${senderNums.join('|')}, OWNER_NUMBER(file)=${fileOwner || '(kosong)'}, remoteJid=${remoteJid}, alt=${m.messages[0].key.remoteJidAlt || '-'}`);
 
           const isMatch = fileOwner && senderNums.some(n => n === fileOwner);
           if (!isMatch) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Perintah ini hanya untuk pemilik bot.' }, { quoted: m.messages[0] });
+            await sock.sendMessage(remoteJid, { text: '❌ Perintah ini hanya untuk pemilik bot.' }, { quoted: m.messages[0] });
             return;
           }
           // Sync ke runtime
           reloadEnvConfig();
         } catch (e) {
-          await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Gagal membaca konfigurasi.' }, { quoted: m.messages[0] });
+          await sock.sendMessage(remoteJid, { text: '❌ Gagal membaca konfigurasi.' }, { quoted: m.messages[0] });
           console.error('Gagal baca .env untuk /rahasia:', e);
           return;
         }
 
         const args = chatMessage.slice(9).trim();
 
-        // /rahasia Ã¢â‚¬â€ show all .env content
+        // /rahasia — show all .env content
         if (!args) {
           try {
             const envFile = fs.readFileSync(ENV_PATH, 'utf-8');
             const lines = envFile.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
-            let msgText = 'Ã°Å¸â€Â *Konfigurasi .env:*\n\n';
+            let msgText = '🔐 *Konfigurasi .env:*\n\n';
             for (const line of lines) {
               const eqIdx = line.indexOf('=');
               if (eqIdx === -1) {
@@ -1081,11 +1027,11 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
               const key = line.slice(0, eqIdx);
               const val = line.slice(eqIdx + 1);
               const masked = maskSensitiveValue(key, val);
-              msgText += `Ã¢â‚¬Â¢ ${key}=${masked}\n`;
+              msgText += `• ${key}=${masked}\n`;
             }
             await sock.sendMessage(remoteJid, { text: msgText }, { quoted: m.messages[0] });
           } catch (e) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ Gagal membaca .env: ${e.message}` }, { quoted: m.messages[0] });
+            await sock.sendMessage(remoteJid, { text: `❌ Gagal membaca .env: ${e.message}` }, { quoted: m.messages[0] });
           }
           return;
         }
@@ -1095,13 +1041,13 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           const setArg = args.slice(4).trim();
           const eqIdx = setArg.indexOf('=');
           if (eqIdx === -1) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Format: /rahasia set KEY=VALUE' }, { quoted: m.messages[0] });
+            await sock.sendMessage(remoteJid, { text: '❌ Format: /rahasia set KEY=VALUE' }, { quoted: m.messages[0] });
             return;
           }
           const key = setArg.slice(0, eqIdx).trim().toUpperCase();
           const value = setArg.slice(eqIdx + 1).trim();
           if (!key) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ KEY tidak boleh kosong' }, { quoted: m.messages[0] });
+            await sock.sendMessage(remoteJid, { text: '❌ KEY tidak boleh kosong' }, { quoted: m.messages[0] });
             return;
           }
 
@@ -1116,12 +1062,12 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             fs.writeFileSync(ENV_PATH, envFile, 'utf-8');
 
             if (reloadEnvConfig()) {
-              await sock.sendMessage(remoteJid, { text: `Ã¢Å“â€¦ *${key}* berhasil diubah menjadi:\n\`\`\`${maskSensitiveValue(key, value)}\`\`\`\n\nÃ°Å¸â€â€ž Konfigurasi sudah langsung aktif tanpa restart.` }, { quoted: m.messages[0] });
+              await sock.sendMessage(remoteJid, { text: `✅ *${key}* berhasil diubah menjadi:\n\`\`\`${maskSensitiveValue(key, value)}\`\`\`\n\n🔄 Konfigurasi sudah langsung aktif tanpa restart.` }, { quoted: m.messages[0] });
             } else {
-              await sock.sendMessage(remoteJid, { text: `Ã¢Å¡Â Ã¯Â¸Â File .env sudah diupdate, tapi gagal me-reload konfigurasi. Restart bot diperlukan.` }, { quoted: m.messages[0] });
+              await sock.sendMessage(remoteJid, { text: `⚠️ File .env sudah diupdate, tapi gagal me-reload konfigurasi. Restart bot diperlukan.` }, { quoted: m.messages[0] });
             }
           } catch (e) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ Gagal mengupdate .env: ${e.message}` }, { quoted: m.messages[0] });
+            await sock.sendMessage(remoteJid, { text: `❌ Gagal mengupdate .env: ${e.message}` }, { quoted: m.messages[0] });
           }
           return;
         }
@@ -1130,20 +1076,20 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         if (args.startsWith('get ')) {
           const key = args.slice(4).trim().toUpperCase();
           if (!key) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Format: /rahasia get KEY' }, { quoted: m.messages[0] });
+            await sock.sendMessage(remoteJid, { text: '❌ Format: /rahasia get KEY' }, { quoted: m.messages[0] });
             return;
           }
           const val = process.env[key];
           if (val === undefined) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ *${key}* tidak ditemukan di .env` }, { quoted: m.messages[0] });
+            await sock.sendMessage(remoteJid, { text: `❌ *${key}* tidak ditemukan di .env` }, { quoted: m.messages[0] });
           } else {
-            await sock.sendMessage(remoteJid, { text: `Ã°Å¸â€â€˜ *${key}*=\`\`\`${maskSensitiveValue(key, val)}\`\`\`` }, { quoted: m.messages[0] });
+            await sock.sendMessage(remoteJid, { text: `🔑 *${key}*=\`\`\`${maskSensitiveValue(key, val)}\`\`\`` }, { quoted: m.messages[0] });
           }
           return;
         }
 
         // Unknown subcommand
-        await sock.sendMessage(remoteJid, { text: 'Ã°Å¸â€Â *Perintah /rahasia:*\n\n/rahasia Ã¢â‚¬â€ Lihat semua konfigurasi\n/rahasia get KEY Ã¢â‚¬â€ Lihat nilai KEY\n/rahasia set KEY=VALUE Ã¢â‚¬â€ Ubah nilai KEY\n\nÃ°Å¸â€™Â¡ Perubahan langsung aktif tanpa restart.' }, { quoted: m.messages[0] });
+        await sock.sendMessage(remoteJid, { text: '🔐 *Perintah /rahasia:*\n\n/rahasia — Lihat semua konfigurasi\n/rahasia get KEY — Lihat nilai KEY\n/rahasia set KEY=VALUE — Ubah nilai KEY\n\n💡 Perubahan langsung aktif tanpa restart.' }, { quoted: m.messages[0] });
         return;
       }
 
@@ -1190,7 +1136,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           targetMessage = findRecentViewOnce(remoteJid);
 
           if (!targetMessage) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Tidak ditemukan media view-once di cache.\n\nÃ°Å¸â€™Â¡ Tips: Reply langsung ke pesan view-once lalu ketik /see' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '⚠️ Tidak ditemukan media view-once di cache.\n\n💡 Tips: Reply langsung ke pesan view-once lalu ketik /see' }, { quoted: msg });
             return;
           }
 
@@ -1205,7 +1151,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         }
 
         if (!unwrappedMessage) {
-          await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Gagal membaca pesan. Silakan coba lagi.' }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: '❌ Gagal membaca pesan. Silakan coba lagi.' }, { quoted: msg });
           return;
         }
 
@@ -1241,7 +1187,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           mediaType = 'sticker';
           mimeType = 'image/webp';
         } else {
-          await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Pesan yang di-reply bukan file media. Silakan reply file yang ingin dilihat.' }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: '❌ Pesan yang di-reply bukan file media. Silakan reply file yang ingin dilihat.' }, { quoted: msg });
           return;
         }
 
@@ -1309,10 +1255,10 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           }
 
           await sock.sendMessage(remoteJid, messagePayload, { quoted: msg });
-          await sock.sendMessage(remoteJid, { text: 'Ã¢Å“â€¦ File telah dikirim sebagai file biasa (tidak sekali dilihat lagi).' }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: '✅ File telah dikirim sebagai file biasa (tidak sekali dilihat lagi).' }, { quoted: msg });
         } catch (error) {
           console.error('Error downloading/sending view-once media:', error);
-          await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ Gagal mengunduh media: ${error.message}` }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: `❌ Gagal mengunduh media: ${error.message}` }, { quoted: msg });
         }
         return;
       }
@@ -1327,7 +1273,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           const bearer = process.env.EDLINK_BEARER;
           const items = await fetchOpenAssignments({ bearer });
           if (!items || items.length === 0) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢Å“â€¦ Tidak ada tugas/quiz terbuka saat ini.' }, { quoted: m.messages[0] });
+            await sock.sendMessage(remoteJid, { text: '✅ Tidak ada tugas/quiz terbuka saat ini.' }, { quoted: m.messages[0] });
             return;
           }
 
@@ -1345,15 +1291,15 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
 
           const lines = items.map((it) => {
             const due = parseMaybeDate(it.dueAt || it.publishedAtTimestamp || it.section?.endedAtTimestamp);
-            const dueStr = due ? due.toLocaleString('id-ID') : 'Ã¢â‚¬â€';
+            const dueStr = due ? due.toLocaleString('id-ID') : '—';
             // console.log(it.group);
             const className = it.group?.className || '';
             const kelas = it.group?.name || it.group?.className || '';
             const link = (it.group?.description && (it.group.description.match(/https?:\/\/(\S+)/) || [])[0]) || '';
-            return `Ã¢â‚¬Â¢ ${it.title || 'Tugas/Quiz'}\nKelas: ${kelas} (${className})\nWaktu: ${dueStr}\n${link}`;
+            return `• ${it.title || 'Tugas/Quiz'}\nKelas: ${kelas} (${className})\nWaktu: ${dueStr}\n${link}`;
           });
 
-          const out = `Ã°Å¸â€œÅ¡ *Daftar Tugas / Quiz Terbuka:*
+          const out = `📚 *Daftar Tugas / Quiz Terbuka:*
 \n${lines.join('\n\n')}`;
           await sock.sendMessage(remoteJid, { text: out }, { quoted: m.messages[0] });
         } catch (err) {
@@ -1376,12 +1322,12 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             const size = 10;
 
             if (!total || total <= 0) {
-              return 'Ã¢â€“â€˜'.repeat(size);
+              return '░'.repeat(size);
             }
 
             const filled = Math.round((current / total) * size);
 
-            return 'Ã¢â€“â€œ'.repeat(filled) + 'Ã¢â€“â€˜'.repeat(size - filled);
+            return '▓'.repeat(filled) + '░'.repeat(size - filled);
           };
 
           const lines = data.map((item, index) => {
@@ -1401,12 +1347,12 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
 
             const percentage = totalSection > 0 ? Math.round((finishedSection / totalSection) * 100) : 0;
 
-            const status = percentage >= 100 ? 'Ã¢Å“â€¦ Lengkap' : percentage >= 75 ? 'Ã°Å¸Å¸Â¡ Hampir Selesai' : 'Ã°Å¸â€Â´ Masih Banyak';
+            const status = percentage >= 100 ? '✅ Lengkap' : percentage >= 75 ? '🟡 Hampir Selesai' : '🔴 Masih Banyak';
 
-            return `Ã°Å¸â€œÅ¡ *${index + 1}. ${name}*\n` + `Ã¢â€Â£ ${progress} ${percentage}%\n` + `Ã¢â€Â£ Ã°Å¸â€œâ€“ ${finishedSection}/${totalSection} Pertemuan\n` + `Ã¢â€Â£ Ã°Å¸â€˜Â¥ Kehadiran: ${presenceTotal}\n` + `Ã¢â€Â£ Ã°Å¸â€œÅ’ ${status}\n` + `Ã¢â€â€” Ã°Å¸â€â€” ${classUrl}`;
+            return `📚 *${index + 1}. ${name}*\n` + `┣ ${progress} ${percentage}%\n` + `┣ 📖 ${finishedSection}/${totalSection} Pertemuan\n` + `┣ 👥 Kehadiran: ${presenceTotal}\n` + `┣ 📌 ${status}\n` + `┗ 🔗 ${classUrl}`;
           });
 
-          const out = `Ã°Å¸â€œÂ *STATUS ABSEN EDLINK*\n` + `Ã¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\n\n` + lines.join('\n\n') + `\n\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\n` + `Ã°Å¸â€œâ€¦ Update: ${new Date().toLocaleString('id-ID')}`;
+          const out = `📝 *STATUS ABSEN EDLINK*\n` + `━━━━━━━━━━━━━━━\n\n` + lines.join('\n\n') + `\n\n━━━━━━━━━━━━━━━\n` + `📅 Update: ${new Date().toLocaleString('id-ID')}`;
 
           await sock.sendMessage(remoteJid, { text: out }, { quoted: m.messages[0] });
         } catch (err) {
@@ -1474,7 +1420,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             await sock.sendMessage(remoteJid, { text: 'Belum ada notes.' }, { quoted: m.messages[0] });
             return;
           }
-          const summary = rows.map((r) => `ID: ${r.id} Ã¢â‚¬â€ ${r.author} Ã¢â‚¬â€ ${r.created_at}\n\n${r.content.slice(0, 200)}${r.content.length > 200 ? '...' : ''}`).join('\n\n');
+          const summary = rows.map((r) => `ID: ${r.id} — ${r.author} — ${r.created_at}\n\n${r.content.slice(0, 200)}${r.content.length > 200 ? '...' : ''}`).join('\n\n');
           await sock.sendMessage(remoteJid, { text: `Daftar notes:\n\n${summary}` }, { quoted: m.messages[0] });
           return;
         }
@@ -1511,7 +1457,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         }
 
         // fallback: show help for notes
-        await sock.sendMessage(remoteJid, { text: 'Format /notes:\n/notes <teks> Ã¢â‚¬â€ buat note\n/notes <id> Ã¢â‚¬â€ lihat note\n/notes show Ã¢â‚¬â€ list semua note\n/notes delete <id> Ã¢â‚¬â€ hapus note' }, { quoted: m.messages[0] });
+        await sock.sendMessage(remoteJid, { text: 'Format /notes:\n/notes <teks> — buat note\n/notes <id> — lihat note\n/notes show — list semua note\n/notes delete <id> — hapus note' }, { quoted: m.messages[0] });
       }
 
       if (/^\/add\b/.test(chatMessage)) {
@@ -1556,7 +1502,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã°Å¸Å¡Âª Permainan telah dihentikan.',
+              text: '🚪 Permainan telah dihentikan.',
             },
             { quoted: msg },
           );
@@ -1564,7 +1510,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢ÂÅ’ Tidak ada permainan aktif saat ini.',
+              text: '❌ Tidak ada permainan aktif saat ini.',
             },
             { quoted: msg },
           );
@@ -1574,7 +1520,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
 
       if (chatMessage === '/skip') {
         if (!gameSessions.has(sessionKey)) {
-          await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Tidak ada game aktif untuk dilewati.' }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: '⚠️ Tidak ada game aktif untuk dilewati.' }, { quoted: msg });
           return;
         }
 
@@ -1590,7 +1536,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: 'Ã¢ÂÂ­Ã¯Â¸Â Soal dilewati. Berikut soal selanjutnya:',
+            text: '⏭️ Soal dilewati. Berikut soal selanjutnya:',
           },
           { quoted: msg },
         );
@@ -1600,7 +1546,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: `Ã°Å¸Â§Â  ${nextSoal.soal}`,
+              text: `🧠 ${nextSoal.soal}`,
             },
             { quoted: msg },
           );
@@ -1609,7 +1555,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             remoteJid,
             {
               image: { url: nextSoal.img },
-              caption: `Ã°Å¸â€“Â¼Ã¯Â¸Â *Clue:*\n${nextSoal.deskripsi || 'Tidak ada'}`,
+              caption: `🖼️ *Clue:*\n${nextSoal.deskripsi || 'Tidak ada'}`,
             },
             { quoted: msg },
           );
@@ -1618,7 +1564,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             remoteJid,
             {
               image: { url: nextSoal.img },
-              caption: 'Ã°Å¸â€“Â¼Ã¯Â¸Â Soal Berikutnya!',
+              caption: '🖼️ Soal Berikutnya!',
             },
             { quoted: msg },
           );
@@ -1653,7 +1599,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
               await sock.sendMessage(
                 remoteJid,
                 {
-                  text: `Ã¢Å“â€¦ Semua jawaban benar!`,
+                  text: `✅ Semua jawaban benar!`,
                 },
                 { quoted: msg },
               );
@@ -1661,7 +1607,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
               await sock.sendMessage(
                 remoteJid,
                 {
-                  text: `Ã°Å¸â€™Â¯ *FAMILY 100*\n${next.soal}`,
+                  text: `💯 *FAMILY 100*\n${next.soal}`,
                 },
                 { quoted: msg },
               );
@@ -1669,7 +1615,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
               await sock.sendMessage(
                 remoteJid,
                 {
-                  text: `Ã¢Å“â€¦ Benar! Masih ${sisa} jawaban lagi.`,
+                  text: `✅ Benar! Masih ${sisa} jawaban lagi.`,
                 },
                 { quoted: msg },
               );
@@ -1678,7 +1624,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             await sock.sendMessage(
               remoteJid,
               {
-                text: `Ã¢ÂÅ’ Salah atau sudah dijawab.`,
+                text: `❌ Salah atau sudah dijawab.`,
               },
               { quoted: msg },
             );
@@ -1698,13 +1644,13 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             soal: nextSoal,
           });
 
-          const deskripsi = session.soal?.deskripsi && ['caklontong', 'tebakgambar'].includes(session.game) ? `\nÃ°Å¸â€œÂ *Penjelasan:* ${session.soal.deskripsi}` : '';
+          const deskripsi = session.soal?.deskripsi && ['caklontong', 'tebakgambar'].includes(session.game) ? `\n📝 *Penjelasan:* ${session.soal.deskripsi}` : '';
 
           // 1. Kirim feedback jawaban benar dulu
           await sock.sendMessage(
             remoteJid,
             {
-              text: `Ã¢Å“â€¦ Benar! Point +10\n\n${deskripsi}`,
+              text: `✅ Benar! Point +10\n\n${deskripsi}`,
             },
             { quoted: msg },
           );
@@ -1716,7 +1662,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             await sock.sendMessage(
               remoteJid,
               {
-                text: `Ã°Å¸Â§Â© *Soal Berikutnya:*\nSusun kata berikut: ${nextSoal.soal}\nKategori: ${nextSoal.tipe}`,
+                text: `🧩 *Soal Berikutnya:*\nSusun kata berikut: ${nextSoal.soal}\nKategori: ${nextSoal.tipe}`,
               },
               { quoted: msg },
             );
@@ -1724,20 +1670,20 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
             await sock.sendMessage(
               remoteJid,
               {
-                text: `Ã°Å¸Â§Â  *Soal Berikutnya:*\n${nextSoal.soal}`,
+                text: `🧠 *Soal Berikutnya:*\n${nextSoal.soal}`,
               },
               { quoted: msg },
             );
           } else if (session.game === 'tebakgambar' && nextSoal.img) {
             await sock.sendMessage(remoteJid, {
               image: { url: nextSoal.img },
-              caption: `Ã°Å¸â€“Â¼Ã¯Â¸Â *Soal Berikutnya!*\n\nÃ°Å¸Â§Â  Clue: ${nextSoal.deskripsi || 'Tidak ada'}`,
+              caption: `🖼️ *Soal Berikutnya!*\n\n🧠 Clue: ${nextSoal.deskripsi || 'Tidak ada'}`,
               quoted: msg,
             });
           } else if (nextSoal.img) {
             await sock.sendMessage(remoteJid, {
               image: { url: nextSoal.img },
-              caption: `Ã°Å¸â€“Â¼Ã¯Â¸Â *Soal Berikutnya!*`,
+              caption: `🖼️ *Soal Berikutnya!*`,
               quoted: msg,
             });
           }
@@ -1749,7 +1695,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã¢ÂÅ’ Salah. Coba lagi atau ketik /exit untuk keluar.`,
+            text: `❌ Salah. Coba lagi atau ketik /exit untuk keluar.`,
           },
           { quoted: msg },
         );
@@ -1762,20 +1708,20 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: `Ã°Å¸â€Â *Soal Ulang:*\nSusun kata berikut: ${soalAktif.soal}\nKategori: ${soalAktif.tipe}`,
+              text: `🔁 *Soal Ulang:*\nSusun kata berikut: ${soalAktif.soal}\nKategori: ${soalAktif.tipe}`,
             },
             { quoted: msg },
           );
         } else if (game === 'tebakkimia' && soalAktif.soal) {
           // Soal tebakkimia
           await sock.sendMessage(remoteJid, {
-            text: `Ã°Å¸â€Â *Soal Ulang:*\nClue: Unsur dari ${soalAktif.soal} adalah?`,
+            text: `🔁 *Soal Ulang:*\nClue: Unsur dari ${soalAktif.soal} adalah?`,
             quoted: msg,
           });
         } else if (soalAktif.soal && !soalAktif.img) {
           // Soal berbentuk teks biasa
           await sock.sendMessage(remoteJid, {
-            text: `Ã°Å¸â€Â *Soal Ulang:*\n${soalAktif.soal}`,
+            text: `🔁 *Soal Ulang:*\n${soalAktif.soal}`,
             quoted: msg,
           });
         } else if (game === 'tebakgambar' && soalAktif.img) {
@@ -1783,7 +1729,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           // Gambar dengan clue
           await sock.sendMessage(remoteJid, {
             image: { url: soalAktif.img },
-            caption: `Ã°Å¸â€“Â¼Ã¯Â¸Â *Clue Ulang!*\n\nÃ°Å¸Â§Â  ${soalAktif.deskripsi || 'Tidak ada'}`,
+            caption: `🖼️ *Clue Ulang!*\n\n🧠 ${soalAktif.deskripsi || 'Tidak ada'}`,
             quoted: msg,
           });
         } else if (soalAktif.img) {
@@ -1791,7 +1737,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await new Promise((resolve) => setTimeout(resolve, 800)); // Delay 800ms
           await sock.sendMessage(remoteJid, {
             image: { url: soalAktif.img },
-            caption: `Ã°Å¸â€“Â¼Ã¯Â¸Â *Soal Ulang!*`,
+            caption: `🖼️ *Soal Ulang!*`,
             quoted: msg,
           });
         }
@@ -1807,14 +1753,14 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã°Å¸â€œÅ  Belum ada pemain di leaderboard untuk chat ini.',
+              text: '📊 Belum ada pemain di leaderboard untuk chat ini.',
             },
             { quoted: msg },
           );
           return;
         }
 
-        let msgSend = 'Ã°Å¸Ââ€  *Leaderboard Top 5:*\n';
+        let msgSend = '🏆 *Leaderboard Top 5:*\n';
         topUsers.forEach((user, i) => {
           msgSend += `${i + 1}. ${user.name} - ${user.score} poin\n`;
         });
@@ -1827,7 +1773,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -1843,7 +1789,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã°Å¸Â§Â  *ASAH OTAK*\n${soal.soal}`,
+            text: `🧠 *ASAH OTAK*\n${soal.soal}`,
           },
           { quoted: msg },
         );
@@ -1855,7 +1801,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -1872,7 +1818,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã°Å¸Â¤Â£ *CAK LONTONG*\n${soal.soal}`,
+            text: `🤣 *CAK LONTONG*\n${soal.soal}`,
           },
           { quoted: msg },
         );
@@ -1884,7 +1830,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -1901,7 +1847,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã°Å¸â€™Â¯ *FAMILY 100*\n${soal.soal}\n\nTebak semua ${soal.jawaban.length} jawabannya!`,
+            text: `💯 *FAMILY 100*\n${soal.soal}\n\nTebak semua ${soal.jawaban.length} jawabannya!`,
           },
           { quoted: msg },
         );
@@ -1913,7 +1859,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -1931,7 +1877,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã°Å¸â€˜Â¤ *SIAPAKAH AKU*\n${soal.soal}`,
+            text: `👤 *SIAPAKAH AKU*\n${soal.soal}`,
           },
           { quoted: msg },
         );
@@ -1944,7 +1890,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -1963,7 +1909,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã°Å¸â€Â¤ *SUSUN KATA*\n${soal.soal}\n*Kategori:* ${soal.tipe}`,
+            text: `🔤 *SUSUN KATA*\n${soal.soal}\n*Kategori:* ${soal.tipe}`,
           },
           { quoted: msg },
         );
@@ -1976,7 +1922,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -1995,7 +1941,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           remoteJid,
           {
             image: { url: soal.img },
-            caption: `Ã°Å¸Å¡Â© *TEBAK BENDERA*\nNegara apakah ini?`,
+            caption: `🚩 *TEBAK BENDERA*\nNegara apakah ini?`,
           },
           { quoted: msg },
         );
@@ -2008,7 +1954,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -2027,7 +1973,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           remoteJid,
           {
             image: { url: soal.img },
-            caption: `Ã°Å¸Å¡Â© *TEBAK BENDERA*\nNegara apakah ini?`,
+            caption: `🚩 *TEBAK BENDERA*\nNegara apakah ini?`,
           },
           { quoted: msg },
         );
@@ -2040,7 +1986,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -2059,7 +2005,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           remoteJid,
           {
             image: { url: soal.img },
-            caption: `Ã°Å¸â€“Â¼Ã¯Â¸Â *TEBAK GAMBAR*\nApa yang ada di gambar ini?\n\nClue: ${soal.deskripsi}`,
+            caption: `🖼️ *TEBAK GAMBAR*\nApa yang ada di gambar ini?\n\nClue: ${soal.deskripsi}`,
           },
           { quoted: msg },
         );
@@ -2072,7 +2018,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -2091,7 +2037,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           remoteJid,
           {
             image: { url: soal.img },
-            caption: `Ã°Å¸Ââ„¢Ã¯Â¸Â *TEBAK KABUPATEN*\nApa nama kabupaten ini?`,
+            caption: `🏙️ *TEBAK KABUPATEN*\nApa nama kabupaten ini?`,
           },
           { quoted: msg },
         );
@@ -2104,7 +2050,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -2122,7 +2068,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã¢Å“ÂÃ¯Â¸Â *TEBAK KALIMAT*\n${soal.soal}`,
+            text: `✍️ *TEBAK KALIMAT*\n${soal.soal}`,
           },
           { quoted: msg },
         );
@@ -2135,7 +2081,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -2153,7 +2099,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã¢Å“ÂÃ¯Â¸Â *TEBAK KATA*\nClue: ${soal.soal}`,
+            text: `✍️ *TEBAK KATA*\nClue: ${soal.soal}`,
           },
           { quoted: msg },
         );
@@ -2166,7 +2112,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
           await sock.sendMessage(
             remoteJid,
             {
-              text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.',
+              text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.',
             },
             { quoted: msg },
           );
@@ -2184,7 +2130,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã¢Å“ÂÃ¯Â¸Â *TEBAK KIMIA*\nClue: Unsur dari ${soal.soal} adalah?`,
+            text: `✍️ *TEBAK KIMIA*\nClue: Unsur dari ${soal.soal} adalah?`,
           },
           { quoted: msg },
         );
@@ -2194,7 +2140,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
 
       if (chatMessage.startsWith('/tebaklirik')) {
         if (gameSessions.has(sessionKey)) {
-          await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.' }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.' }, { quoted: msg });
           return;
         }
 
@@ -2209,7 +2155,7 @@ setInterval(cleanupKhsOutput, 6 * 60 * 60 * 1000);
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã°Å¸Å½Âµ *TEBAK LIRIK*
+            text: `🎵 *TEBAK LIRIK*
 ${soal.soal}`,
           },
           { quoted: msg },
@@ -2219,7 +2165,7 @@ ${soal.soal}`,
 
       if (chatMessage.startsWith('/tebaktebakan')) {
         if (gameSessions.has(sessionKey)) {
-          await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.' }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.' }, { quoted: msg });
           return;
         }
 
@@ -2234,7 +2180,7 @@ ${soal.soal}`,
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã°Å¸Â§Â© *TEBAK-TEBAKAN*
+            text: `🧩 *TEBAK-TEBAKAN*
 ${soal.soal}`,
           },
           { quoted: msg },
@@ -2244,7 +2190,7 @@ ${soal.soal}`,
 
       if (chatMessage.startsWith('/tekateki')) {
         if (gameSessions.has(sessionKey)) {
-          await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Masih ada game aktif. Ketik /exit untuk keluar.' }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: '⚠️ Masih ada game aktif. Ketik /exit untuk keluar.' }, { quoted: msg });
           return;
         }
 
@@ -2259,7 +2205,7 @@ ${soal.soal}`,
         await sock.sendMessage(
           remoteJid,
           {
-            text: `Ã¢Ââ€œ *TEKA-TEKI*
+            text: `❓ *TEKA-TEKI*
 ${soal.soal}`,
           },
           { quoted: msg },
@@ -2282,27 +2228,27 @@ ${soal.soal}`,
         const WV_VOTE_MS = WV_CFG.voteSeconds * 1000;
 
         const helpText =
-          `Ã°Å¸ÂÂº *WOLVESVILLE Ã¢â‚¬â€ Werewolf Text*\n\n` +
+          `🐺 *WOLVESVILLE — Werewolf Text*\n\n` +
           `Perintah (semua diawali /ww):\n` +
-          `  /ww help        Ã¢â‚¬â€ Bantuan ini\n` +
-          `  /ww roles       Ã¢â‚¬â€ Lihat daftar role\n` +
-          `  /ww join        Ã¢â‚¬â€ Gabung lobby\n` +
-          `  /ww leave       Ã¢â‚¬â€ Keluar lobby\n` +
-          `  /ww list        Ã¢â‚¬â€ Lihat pemain lobby\n` +
-          `  /ww start       Ã¢â‚¬â€ Mulai game (host)\n` +
-          `  /ww status      Ã¢â‚¬â€ Status game\n` +
-          `  /ww role        Ã¢â‚¬â€ Lihat role kamu (PM)\n` +
-          `  /ww vote <no>   Ã¢â‚¬â€ Vote siang hari\n` +
-          `  /ww unvote      Ã¢â‚¬â€ Batal vote\n` +
-          `  /ww kill <no>   Ã¢â‚¬â€ Serigala membunuh\n` +
-          `  /ww seer <no>   Ã¢â‚¬â€ Dukun menyelidiki\n` +
-          `  /ww protect <no>Ã¢â‚¬â€ Bodyguard melindungi\n` +
-          `  /ww shoot <no>  Ã¢â‚¬â€ Pemburu menembak\n` +
-          `  /ww day         Ã¢â‚¬â€ Paksa lanjut ke siang (host, lewati timer)\n` +
-          `  /ww night       Ã¢â‚¬â€ Paksa lanjut ke malam (host, lewati timer)\n` +
-          `  /ww end         Ã¢â‚¬â€ Akhiri paksa (host)\n` +
-          `  /exit           Ã¢â‚¬â€ Keluar & hapus sesi WW\n\n` +
-          `Ã¢ÂÂ±Ã¯Â¸Â Timer: malam ${WV_CFG.nightSeconds}s, diskusi ${WV_CFG.dayDiscussSeconds}s, voting ${WV_CFG.voteSeconds}s (atur di database/wolvesville.json).`;
+          `  /ww help        — Bantuan ini\n` +
+          `  /ww roles       — Lihat daftar role\n` +
+          `  /ww join        — Gabung lobby\n` +
+          `  /ww leave       — Keluar lobby\n` +
+          `  /ww list        — Lihat pemain lobby\n` +
+          `  /ww start       — Mulai game (host)\n` +
+          `  /ww status      — Status game\n` +
+          `  /ww role        — Lihat role kamu (PM)\n` +
+          `  /ww vote <no>   — Vote siang hari\n` +
+          `  /ww unvote      — Batal vote\n` +
+          `  /ww kill <no>   — Serigala membunuh\n` +
+          `  /ww seer <no>   — Dukun menyelidiki\n` +
+          `  /ww protect <no>— Bodyguard melindungi\n` +
+          `  /ww shoot <no>  — Pemburu menembak\n` +
+          `  /ww day         — Paksa lanjut ke siang (host, lewati timer)\n` +
+          `  /ww night       — Paksa lanjut ke malam (host, lewati timer)\n` +
+          `  /ww end         — Akhiri paksa (host)\n` +
+          `  /exit           — Keluar & hapus sesi WW\n\n` +
+          `⏱️ Timer: malam ${WV_CFG.nightSeconds}s, diskusi ${WV_CFG.dayDiscussSeconds}s, voting ${WV_CFG.voteSeconds}s (atur di database/wolvesville.json).`;
 
 
         function clearWvTimers(session) {
@@ -2327,7 +2273,7 @@ ${soal.soal}`,
           return session.players
             .map((p, i) => {
               if (!p.alive || i === excludeIdx) return null;
-              const status = p.alive ? 'Ã°Å¸Å¸Â¢' : 'Ã°Å¸â€™â‚¬';
+              const status = p.alive ? '🟢' : '💀';
               return `${status} [#${i + 1} ${p.name}](${waLink(`/ww ${action} ${i + 1}`)})`;
             })
             .filter(Boolean)
@@ -2378,24 +2324,24 @@ ${soal.soal}`,
           const curKey = found.key;
           clearWvTimers(cur);
           const r = wv.resolveNight(cur);
-          let text = `Ã¢Ëœâ‚¬Ã¯Â¸Â *HARI ${cur.day}*\n\n`;
+          let text = `☀️ *HARI ${cur.day}*\n\n`;
           if (r.killed) {
             const roleName = wv.getRoleInfo(cur.players[r.killed.idx].role)?.name || '?';
-            text += `Ã°Å¸â€™â‚¬ Malam ini, *${r.killed.name}* (${roleName}) ditemukan mati!\n`;
+            text += `💀 Malam ini, *${r.killed.name}* (${roleName}) ditemukan mati!\n`;
           } else if (r.saved) {
-            text += `Ã°Å¸â€ºÂ¡Ã¯Â¸Â Seseorang diserang tapi berhasil dilindungi!\n`;
+            text += `🛡️ Seseorang diserang tapi berhasil dilindungi!\n`;
           } else {
-            text += `Ã°Å¸Â¤â€ Tidak ada yang mati malam ini.\n`;
+            text += `🤔 Tidak ada yang mati malam ini.\n`;
           }
-          text += `\nÃ°Å¸â€œÅ“ *Pemain Hidup:*\n${wv.getPlayerListText(cur, { mention: curKey.endsWith('@g.us') })}\n\n`;
-          text += `Ã°Å¸â€™Â¬ *Diskusi dibuka!* Voting akan dibuka otomatis dalam ${WV_DISCUSS_MS / 1000}s.\n`;
+          text += `\n📜 *Pemain Hidup:*\n${wv.getPlayerListText(cur, { mention: curKey.endsWith('@g.us') })}\n\n`;
+          text += `💬 *Diskusi dibuka!* Voting akan dibuka otomatis dalam ${WV_DISCUSS_MS / 1000}s.\n`;
           text += `Saat voting dibuka, link vote akan muncul otomatis.`;
 
           const win = wv.checkWin(cur);
           if (win.ended) {
-            text = `Ã¢Ëœâ‚¬Ã¯Â¸Â *HARI ${cur.day}*\n\n` +
-              (r.killed ? `Ã°Å¸â€™â‚¬ ${r.killed.name} mati.\n` : '') +
-              `\nÃ°Å¸Ââ€  Pemenang: *${win.winner}*\n${win.reason}\n\n${wv.getRoleRevealText(cur)}`;
+            text = `☀️ *HARI ${cur.day}*\n\n` +
+              (r.killed ? `💀 ${r.killed.name} mati.\n` : '') +
+              `\n🏆 Pemenang: *${win.winner}*\n${win.reason}\n\n${wv.getRoleRevealText(cur)}`;
             await wvSendTo(curKey, text);
             clearWvTimers(cur);
             wv.endGame(cur, win.winner, win.reason);
@@ -2409,11 +2355,11 @@ ${soal.soal}`,
             const hIdx = cur.pendingHunter;
             await wvSendTo(
               curKey,
-              `Ã°Å¸ÂÂ¹ *${cur.players[hIdx].name} (Pemburu) punya hak tembak!* Ketik /ww shoot <no> sebelum hari berakhir.`,
+              `🏹 *${cur.players[hIdx].name} (Pemburu) punya hak tembak!* Ketik /ww shoot <no> sebelum hari berakhir.`,
               curKey.endsWith('@g.us') ? [cur.players[hIdx].jid] : undefined,
             );
             try {
-              await sock.sendMessage(cur.players[hIdx].jid, { text: `Ã°Å¸ÂÂ¹ Kamu mati! Gunakan /ww shoot <no> sebelum hari berakhir.` });
+              await sock.sendMessage(cur.players[hIdx].jid, { text: `🏹 Kamu mati! Gunakan /ww shoot <no> sebelum hari berakhir.` });
             } catch (e) {}
           }
 
@@ -2442,10 +2388,10 @@ ${soal.soal}`,
             try {
               await sock.sendMessage(wolf.jid, {
                 text:
-                  `Ã°Å¸Å’â„¢ *MALAM ${cur.day} Ã¢â‚¬â€ Serigala*\n\n` +
-                  `Ã°Å¸â€˜Â¥ *Daftar Pemain (klik untuk kill):*\n${killLinks}\n\n` +
-                  `Ã°Å¸ÂÂº *Rekan Serigala:*\n${mates || '(kamu sendiri)'}\n\n` +
-                  `Ã¢ÂÂ³ Aksi malam berakhir dalam ${WV_NIGHT_MS / 1000}s.`,
+                  `🌙 *MALAM ${cur.day} — Serigala*\n\n` +
+                  `👥 *Daftar Pemain (klik untuk kill):*\n${killLinks}\n\n` +
+                  `🐺 *Rekan Serigala:*\n${mates || '(kamu sendiri)'}\n\n` +
+                  `⏳ Aksi malam berakhir dalam ${WV_NIGHT_MS / 1000}s.`,
               });
             } catch (e) {
               console.error('Gagal PM wolf:', e);
@@ -2462,10 +2408,10 @@ ${soal.soal}`,
             try {
               await sock.sendMessage(seer.jid, {
                 text:
-                  `Ã°Å¸Å’â„¢ *MALAM ${cur.day} Ã¢â‚¬â€ Dukun*\n\n` +
-                  `Ã°Å¸â€˜Â¥ *Daftar Pemain (klik untuk investigasi):*\n${seerLinks}\n\n` +
-                  `Ã°Å¸â€Â® Hasil hanya dilihat oleh kamu.\n\n` +
-                  `Ã¢ÂÂ³ Aksi malam berakhir dalam ${WV_NIGHT_MS / 1000}s.`,
+                  `🌙 *MALAM ${cur.day} — Dukun*\n\n` +
+                  `👥 *Daftar Pemain (klik untuk investigasi):*\n${seerLinks}\n\n` +
+                  `🔮 Hasil hanya dilihat oleh kamu.\n\n` +
+                  `⏳ Aksi malam berakhir dalam ${WV_NIGHT_MS / 1000}s.`,
               });
             } catch (e) {
               console.error('Gagal PM seer:', e);
@@ -2482,10 +2428,10 @@ ${soal.soal}`,
             try {
               await sock.sendMessage(bg.jid, {
                 text:
-                  `Ã°Å¸Å’â„¢ *MALAM ${cur.day} Ã¢â‚¬â€ Bodyguard*\n\n` +
-                  `Ã°Å¸â€˜Â¥ *Daftar Pemain (klik untuk lindungi):*\n${bgLinks}\n\n` +
-                  `Ã°Å¸â€ºÂ¡Ã¯Â¸Â Tidak boleh melindungi orang yang sama dua malam berturut-turut.\n\n` +
-                  `Ã¢ÂÂ³ Aksi malam berakhir dalam ${WV_NIGHT_MS / 1000}s.`,
+                  `🌙 *MALAM ${cur.day} — Bodyguard*\n\n` +
+                  `👥 *Daftar Pemain (klik untuk lindungi):*\n${bgLinks}\n\n` +
+                  `🛡️ Tidak boleh melindungi orang yang sama dua malam berturut-turut.\n\n` +
+                  `⏳ Aksi malam berakhir dalam ${WV_NIGHT_MS / 1000}s.`,
               });
             } catch (e) {
               console.error('Gagal PM bodyguard:', e);
@@ -2502,10 +2448,10 @@ ${soal.soal}`,
           clearWvTimers(cur);
           wv.openVoting(cur);
 
-          let text = `Ã°Å¸â€”Â³Ã¯Â¸Â *VOTING DIBUKA!*\n\n`;
+          let text = `🗳️ *VOTING DIBUKA!*\n\n`;
           text += `Silakan pilih target dengan klik link berikut:\n\n`;
           text += `${playerActionLinks(cur, 'vote')}\n\n`;
-          text += `Ã¢ÂÂ³ Voting otomatis selesai dalam ${WV_VOTE_MS / 1000}s.`;
+          text += `⏳ Voting otomatis selesai dalam ${WV_VOTE_MS / 1000}s.`;
 
           await wvSendTo(curKey, text);
           cur.timers.voteTimer = setTimeout(wvRunDayEnd, WV_VOTE_MS);
@@ -2518,10 +2464,10 @@ ${soal.soal}`,
           const curKey = found.key;
           clearWvTimers(cur);
           const r = wv.resolveVote(cur);
-          let text = `Ã°Å¸Å’â„¢ *MALAM ${cur.day + 1}*\n\n`;
+          let text = `🌙 *MALAM ${cur.day + 1}*\n\n`;
           if (r.lynched) {
             const roleName = wv.getRoleInfo(cur.players[r.lynched.idx].role)?.name || '?';
-            text += `Ã¢Å¡â€“Ã¯Â¸Â Siang ini, *${r.lynched.name}* (${roleName}) digantung!\n`;
+            text += `⚖️ Siang ini, *${r.lynched.name}* (${roleName}) digantung!\n`;
           } else {
             text += `${r.reason}\n`;
           }
@@ -2529,19 +2475,19 @@ ${soal.soal}`,
           cur.day += 1;
           cur.nightActions = { kills: {}, seerChecks: {}, protects: {} };
           cur.votingOpen = false;
-          text += `\nSilakan peran malam menjalankan aksi:\nÃ¢â‚¬Â¢ /ww kill <no>\nÃ¢â‚¬Â¢ /ww seer <no>\nÃ¢â‚¬Â¢ /ww protect <no>`;
+          text += `\nSilakan peran malam menjalankan aksi:\n• /ww kill <no>\n• /ww seer <no>\n• /ww protect <no>`;
 
           if (r.hunterTrigger) {
-            text += `\n\nÃ°Å¸ÂÂ¹ *${r.hunterTrigger.name} (Pemburu) punya hak tembak malam ini!*`;
+            text += `\n\n🏹 *${r.hunterTrigger.name} (Pemburu) punya hak tembak malam ini!*`;
             try {
-              await sock.sendMessage(cur.players[r.hunterTrigger.idx].jid, { text: `Ã°Å¸ÂÂ¹ Kamu mati digantung! Gunakan /ww shoot <no> malam ini juga.` });
+              await sock.sendMessage(cur.players[r.hunterTrigger.idx].jid, { text: `🏹 Kamu mati digantung! Gunakan /ww shoot <no> malam ini juga.` });
             } catch (e) {}
             cur.pendingHunter = r.hunterTrigger.idx;
           }
 
           const win = wv.checkWin(cur);
           if (win.ended) {
-            text += `\n\nÃ°Å¸Ââ€  Pemenang: *${win.winner}*\n${win.reason}\n\n${wv.getRoleRevealText(cur)}`;
+            text += `\n\n🏆 Pemenang: *${win.winner}*\n${win.reason}\n\n${wv.getRoleRevealText(cur)}`;
             await wvSendTo(curKey, text);
             clearWvTimers(cur);
             wv.endGame(cur, win.winner, win.reason);
@@ -2549,7 +2495,7 @@ ${soal.soal}`,
             return;
           }
 
-          text += `\n\nÃ¢ÂÂ³ Malam otomatis lanjut ke hari dalam ${WV_NIGHT_MS / 1000}s.`;
+          text += `\n\n⏳ Malam otomatis lanjut ke hari dalam ${WV_NIGHT_MS / 1000}s.`;
           await wvSendTo(curKey, text);
 
           // PM peran malam (werewolf, seer, bodyguard) dengan list pemain + link aksi
@@ -2574,7 +2520,7 @@ ${soal.soal}`,
           if (!found) {
             await sock.sendMessage(
               remoteJid,
-              { text: 'Ã¢Å¡Â Ã¯Â¸Â Belum ada sesi Wolvesville. Ketik /ww untuk mulai.' },
+              { text: '⚠️ Belum ada sesi Wolvesville. Ketik /ww untuk mulai.' },
               { quoted: msg },
             );
             return;
@@ -2586,14 +2532,14 @@ ${soal.soal}`,
               const voterIdx = wv.getPlayerIdx(existing, numberUser);
               const canVote = voterIdx !== -1 && existing.players[voterIdx].alive;
               if (canVote) {
-                listText += `\n\nÃ°Å¸â€”Â³Ã¯Â¸Â *Vote (klik link):*\n${playerActionLinks(existing, 'vote', voterIdx)}`;
+                listText += `\n\n🗳️ *Vote (klik link):*\n${playerActionLinks(existing, 'vote', voterIdx)}`;
               } else {
-                listText += `\n\nÃ°Å¸â€”Â³Ã¯Â¸Â *Vote (klik link):*\n${playerActionLinks(existing, 'vote')}`;
+                listText += `\n\n🗳️ *Vote (klik link):*\n${playerActionLinks(existing, 'vote')}`;
               }
             } else if (existing.phase === wv.PHASES.NIGHT) {
-              listText += `\n\nÃ°Å¸Å’â„¢ *Aksi Malam (klik link):*\n${playerActionLinks(existing, 'kill')}`;
+              listText += `\n\n🌙 *Aksi Malam (klik link):*\n${playerActionLinks(existing, 'kill')}`;
             } else if (existing.phase === wv.PHASES.DAY) {
-              listText += `\n\nÃ°Å¸â€™Â¬ *Masa diskusi Ã¢â‚¬â€ voting belum dibuka.*`;
+              listText += `\n\n💬 *Masa diskusi — voting belum dibuka.*`;
             }
             const payload = { text: listText };
             if (isGroup) payload.mentions = wv.getPlayerMentions(existing);
@@ -2605,18 +2551,18 @@ ${soal.soal}`,
             if (existing.votingOpen) {
               const tally = wv.getVoteTally(existing);
               const tallyLines = Object.entries(tally)
-                .map(([idx, c]) => `  ${Number(idx) + 1}. ${existing.players[idx].name} Ã¢â‚¬â€ ${c} suara`)
-                .sort((a, b) => Number(b.split(' Ã¢â‚¬â€ ')[1].split(' ')[0]) - Number(a.split(' Ã¢â‚¬â€ ')[1].split(' ')[0]));
-              text += `\n\nÃ°Å¸â€œÅ  *Vote Sementara:*\n${tallyLines.length ? tallyLines.join('\n') : '  (belum ada)'}`;
+                .map(([idx, c]) => `  ${Number(idx) + 1}. ${existing.players[idx].name} — ${c} suara`)
+                .sort((a, b) => Number(b.split(' — ')[1].split(' ')[0]) - Number(a.split(' — ')[1].split(' ')[0]));
+              text += `\n\n📊 *Vote Sementara:*\n${tallyLines.length ? tallyLines.join('\n') : '  (belum ada)'}`;
               const voterIdx = wv.getPlayerIdx(existing, numberUser);
               const canVote = voterIdx !== -1 && existing.players[voterIdx].alive;
               if (canVote) {
-                text += `\n\nÃ°Å¸â€”Â³Ã¯Â¸Â *Klik untuk vote:*\n${playerActionLinks(existing, 'vote', voterIdx)}`;
+                text += `\n\n🗳️ *Klik untuk vote:*\n${playerActionLinks(existing, 'vote', voterIdx)}`;
               } else {
-                text += `\n\nÃ°Å¸â€”Â³Ã¯Â¸Â *Klik untuk vote:*\n${playerActionLinks(existing, 'vote')}`;
+                text += `\n\n🗳️ *Klik untuk vote:*\n${playerActionLinks(existing, 'vote')}`;
               }
             } else {
-              text += `\n\nÃ°Å¸â€™Â¬ *Masa diskusi Ã¢â‚¬â€ voting akan dibuka otomatis.*`;
+              text += `\n\n💬 *Masa diskusi — voting akan dibuka otomatis.*`;
             }
           }
           await sock.sendMessage(remoteJid, { text }, { quoted: msg });
@@ -2634,7 +2580,7 @@ ${soal.soal}`,
               remoteJid,
               {
                 text:
-                  `Ã°Å¸ÂÂº *WOLVESVILLE Ã¢â‚¬â€ Lobby Dibuat*\nHost: @${numberUser.split('@')[0]}\n\n` +
+                  `🐺 *WOLVESVILLE — Lobby Dibuat*\nHost: @${numberUser.split('@')[0]}\n\n` +
                   `${wv.getPlayerListText(lobby, { mention: isGroup })}\n\n` +
                   `Minimal ${wv.getConfig().minPlayers} pemain. Ketik /ww join untuk gabung, /ww start untuk mulai.`,
                 mentions: lobbyMentions,
@@ -2649,24 +2595,24 @@ ${soal.soal}`,
           if (currentKey !== sessionKey) {
             await sock.sendMessage(
               remoteJid,
-              { text: 'Ã¢Å¡Â Ã¯Â¸Â Kamu sudah ada di sesi Wolvesville lain. Keluar dulu dengan /ww leave (di chat game tersebut).' },
+              { text: '⚠️ Kamu sudah ada di sesi Wolvesville lain. Keluar dulu dengan /ww leave (di chat game tersebut).' },
               { quoted: msg },
             );
             return;
           }
           if (!wv.isLobby(existing)) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Game sudah berjalan, tidak bisa join.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '⚠️ Game sudah berjalan, tidak bisa join.' }, { quoted: msg });
             return;
           }
           const r = wv.joinLobby(existing, numberUser, pushName);
           if (!r.ok) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ ${r.reason}` }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: `❌ ${r.reason}` }, { quoted: msg });
             return;
           }
           await sock.sendMessage(
             remoteJid,
             {
-              text: `Ã¢Å“â€¦ @${numberUser.split('@')[0]} bergabung!\n\n${wv.getPlayerListText(existing, { mention: isGroup })}`,
+              text: `✅ @${numberUser.split('@')[0]} bergabung!\n\n${wv.getPlayerListText(existing, { mention: isGroup })}`,
               mentions: isGroup ? wv.getPlayerMentions(existing) : undefined,
             },
             { quoted: msg },
@@ -2678,19 +2624,19 @@ ${soal.soal}`,
         if (sub === 'leave') {
           const found = findWvSession();
           if (!found || !wv.isLobby(found.session)) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Tidak ada lobby untuk ditinggalkan.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '⚠️ Tidak ada lobby untuk ditinggalkan.' }, { quoted: msg });
             return;
           }
           const existing = found.session;
           const r = wv.leaveLobby(existing, numberUser);
           if (!r.ok) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ ${r.reason}` }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: `❌ ${r.reason}` }, { quoted: msg });
             return;
           }
           await sock.sendMessage(
             remoteJid,
             {
-              text: `Ã°Å¸Å¡Âª @${numberUser.split('@')[0]} keluar dari lobby.\n\n${wv.getPlayerListText(existing, { mention: isGroup })}`,
+              text: `🚪 @${numberUser.split('@')[0]} keluar dari lobby.\n\n${wv.getPlayerListText(existing, { mention: isGroup })}`,
               mentions: isGroup ? wv.getPlayerMentions(existing) : undefined,
             },
             { quoted: msg },
@@ -2702,16 +2648,16 @@ ${soal.soal}`,
         if (sub === 'start') {
           const existing = gameSessions.get(sessionKey);
           if (!existing || existing.type !== 'wolvesville' || !wv.isLobby(existing)) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Tidak ada lobby untuk dimulai.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '⚠️ Tidak ada lobby untuk dimulai.' }, { quoted: msg });
             return;
           }
           if (existing.hostJid !== numberUser) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Hanya host yang bisa /ww start.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Hanya host yang bisa /ww start.' }, { quoted: msg });
             return;
           }
           const r = wv.startGame(existing);
           if (!r.ok) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ ${r.reason}` }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: `❌ ${r.reason}` }, { quoted: msg });
             return;
           }
           const aliveList = wv.getPlayerListText(existing, { mention: isGroup });
@@ -2720,11 +2666,11 @@ ${soal.soal}`,
             remoteJid,
             {
               text:
-                `Ã°Å¸Å½Â¬ *WOLVESVILLE DIMULAI!*\n\n${aliveList}\n\n` +
-                `Ã°Å¸Å’â„¢ *Malam 1* Ã¢â‚¬â€ Semua peran, cek PM bot untuk role kamu.\n` +
-                `Ã¢â‚¬Â¢ Serigala: /ww kill <no>\n` +
-                `Ã¢â‚¬Â¢ Dukun: /ww seer <no>\n` +
-                `Ã¢â‚¬Â¢ Bodyguard: /ww protect <no>`,
+                `🎬 *WOLVESVILLE DIMULAI!*\n\n${aliveList}\n\n` +
+                `🌙 *Malam 1* — Semua peran, cek PM bot untuk role kamu.\n` +
+                `• Serigala: /ww kill <no>\n` +
+                `• Dukun: /ww seer <no>\n` +
+                `• Bodyguard: /ww protect <no>`,
               mentions: isGroup ? mentions : undefined,
             },
             { quoted: msg },
@@ -2733,20 +2679,20 @@ ${soal.soal}`,
             const info = wv.getPlayerRolePM(existing, p.jid);
             if (!info) continue;
             let pmText =
-              `Ã°Å¸Å½Â­ *Role Kamu*\n\n` +
+              `🎭 *Role Kamu*\n\n` +
               `${info.emoji} *${info.roleName}*\n` +
               `${info.desc}\n\n` +
-              `Tim: ${info.team === 'werewolf' ? 'Ã°Å¸ÂÂº Serigala' : 'Ã°Å¸ÂËœÃ¯Â¸Â Warga'}\n`;
+              `Tim: ${info.team === 'werewolf' ? '🐺 Serigala' : '🏘️ Warga'}\n`;
             if (info.role === 'werewolf') {
               const mates = wv.getWerewolfTeamPM(existing, p.jid) || [];
-              pmText += `\nÃ°Å¸â€˜Â¥ *Rekan Serigala:*\n${mates.map((m) => `  ${m.idx + 1}. ${m.name} ${m.alive ? 'Ã°Å¸Å¸Â¢' : 'Ã°Å¸â€™â‚¬'}`).join('\n')}\n`;
-              pmText += `\nÃ°Å¸ÂÂº *Klik untuk kill target:*\n${playerActionLinks(existing, 'kill', p.idx)}`;
+              pmText += `\n👥 *Rekan Serigala:*\n${mates.map((m) => `  ${m.idx + 1}. ${m.name} ${m.alive ? '🟢' : '💀'}`).join('\n')}\n`;
+              pmText += `\n🐺 *Klik untuk kill target:*\n${playerActionLinks(existing, 'kill', p.idx)}`;
             } else if (info.role === 'seer') {
-              pmText += `\nÃ°Å¸â€Â® *Klik untuk menyelidiki:*\n${playerActionLinks(existing, 'seer', p.idx)}`;
+              pmText += `\n🔮 *Klik untuk menyelidiki:*\n${playerActionLinks(existing, 'seer', p.idx)}`;
             } else if (info.role === 'bodyguard') {
-              pmText += `\nÃ°Å¸â€ºÂ¡Ã¯Â¸Â *Klik untuk lindungi:*\n${playerActionLinks(existing, 'protect', p.idx)}`;
+              pmText += `\n🛡️ *Klik untuk lindungi:*\n${playerActionLinks(existing, 'protect', p.idx)}`;
             } else if (info.role === 'hunter') {
-              pmText += `\nÃ°Å¸ÂÂ¹ Saat kamu mati, ketik /ww shoot <no> untuk menembak satu pemain.`;
+              pmText += `\n🏹 Saat kamu mati, ketik /ww shoot <no> untuk menembak satu pemain.`;
             } else {
               pmText += `\n[Lihat daftar pemain](${waLink('/ww list')})`;
             }
@@ -2765,13 +2711,13 @@ ${soal.soal}`,
         if (sub === 'end' || sub === 'cancel') {
           const found = findWvSession();
           if (!found) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Tidak ada sesi Wolvesville.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '⚠️ Tidak ada sesi Wolvesville.' }, { quoted: msg });
             return;
           }
           const existing = found.session;
           const currentKey = found.key;
           if (existing.hostJid !== numberUser) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Hanya host yang bisa /ww end.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Hanya host yang bisa /ww end.' }, { quoted: msg });
             return;
           }
           if (existing.timers) {
@@ -2780,7 +2726,7 @@ ${soal.soal}`,
           wv.cancelLobby(existing);
           await sock.sendMessage(
             remoteJid,
-            { text: `Ã°Å¸â€ºâ€˜ Sesi Wolvesville diakhiri oleh host.` },
+            { text: `🛑 Sesi Wolvesville diakhiri oleh host.` },
             { quoted: msg },
           );
           gameSessions.delete(currentKey);
@@ -2791,29 +2737,29 @@ ${soal.soal}`,
         if (sub === 'role') {
           const found = findWvSession();
           if (!found) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Belum ada sesi Wolvesville.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '⚠️ Belum ada sesi Wolvesville.' }, { quoted: msg });
             return;
           }
           const existing = found.session;
           const info = wv.getPlayerRolePM(existing, numberUser);
           if (!info) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Kamu bukan pemain di sesi ini.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Kamu bukan pemain di sesi ini.' }, { quoted: msg });
             return;
           }
-          await sock.sendMessage(remoteJid, { text: `Ã°Å¸Å½Â­ Role kamu: ${info.emoji} *${info.roleName}*\n${info.desc}` }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: `🎭 Role kamu: ${info.emoji} *${info.roleName}*\n${info.desc}` }, { quoted: msg });
           return;
         }
 
         // ---- in-game actions ----
         const found = findWvSession();
         if (!found) {
-          await sock.sendMessage(remoteJid, { text: 'Ã¢Å¡Â Ã¯Â¸Â Belum ada sesi Wolvesville. Ketik /ww untuk mulai.' }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: '⚠️ Belum ada sesi Wolvesville. Ketik /ww untuk mulai.' }, { quoted: msg });
           return;
         }
         const existing = found.session;
         const playerIdx = wv.getPlayerIdx(existing, numberUser);
         if (playerIdx === -1) {
-          await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Kamu bukan pemain di sesi ini.' }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: '❌ Kamu bukan pemain di sesi ini.' }, { quoted: msg });
           return;
         }
         const me = existing.players[playerIdx];
@@ -2828,21 +2774,21 @@ ${soal.soal}`,
         // ---- werewolf kill ----
         if (sub === 'kill') {
           if (existing.phase !== wv.PHASES.NIGHT) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ /ww kill hanya bisa dipakai saat malam.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ /ww kill hanya bisa dipakai saat malam.' }, { quoted: msg });
             return;
           }
           if (me.role !== 'werewolf' || !me.alive) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Kamu bukan Serigala hidup.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Kamu bukan Serigala hidup.' }, { quoted: msg });
             return;
           }
           const target = parseTarget(arg1);
           if (target === null) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Target tidak valid. Contoh: /ww kill 2' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Target tidak valid. Contoh: /ww kill 2' }, { quoted: msg });
             return;
           }
           const r = wv.processWerewolfKill(existing, playerIdx, target);
           if (!r.ok) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ ${r.reason}` }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: `❌ ${r.reason}` }, { quoted: msg });
             return;
           }
           const tally = existing.nightActions.kills;
@@ -2852,7 +2798,7 @@ ${soal.soal}`,
             remoteJid,
             {
               text:
-                `Ã°Å¸ÂÂº Kill dicatat: target #${target + 1} (${existing.players[target].name})\n` +
+                `🐺 Kill dicatat: target #${target + 1} (${existing.players[target].name})\n` +
                 `Vote Serigala masuk: ${votes.length}/${totalWolves}`,
             },
             { quoted: msg },
@@ -2863,26 +2809,26 @@ ${soal.soal}`,
         // ---- seer check ----
         if (sub === 'seer') {
           if (existing.phase !== wv.PHASES.NIGHT) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ /ww seer hanya bisa dipakai saat malam.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ /ww seer hanya bisa dipakai saat malam.' }, { quoted: msg });
             return;
           }
           if (me.role !== 'seer' || !me.alive) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Kamu bukan Dukun hidup.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Kamu bukan Dukun hidup.' }, { quoted: msg });
             return;
           }
           const target = parseTarget(arg1);
           if (target === null) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Target tidak valid. Contoh: /ww seer 3' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Target tidak valid. Contoh: /ww seer 3' }, { quoted: msg });
             return;
           }
           const r = wv.processSeerCheck(existing, playerIdx, target);
           if (!r.ok) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ ${r.reason}` }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: `❌ ${r.reason}` }, { quoted: msg });
             return;
           }
           await sock.sendMessage(
             remoteJid,
-            { text: `Ã°Å¸â€Â® Hasil investigasi #${target + 1} (${r.targetName}): *${r.result}*` },
+            { text: `🔮 Hasil investigasi #${target + 1} (${r.targetName}): *${r.result}*` },
             { quoted: msg },
           );
           return;
@@ -2891,26 +2837,26 @@ ${soal.soal}`,
         // ---- bodyguard protect ----
         if (sub === 'protect') {
           if (existing.phase !== wv.PHASES.NIGHT) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ /ww protect hanya bisa dipakai saat malam.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ /ww protect hanya bisa dipakai saat malam.' }, { quoted: msg });
             return;
           }
           if (me.role !== 'bodyguard' || !me.alive) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Kamu bukan Bodyguard hidup.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Kamu bukan Bodyguard hidup.' }, { quoted: msg });
             return;
           }
           const target = parseTarget(arg1);
           if (target === null) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Target tidak valid. Contoh: /ww protect 4' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Target tidak valid. Contoh: /ww protect 4' }, { quoted: msg });
             return;
           }
           const r = wv.processBodyguardProtect(existing, playerIdx, target);
           if (!r.ok) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ ${r.reason}` }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: `❌ ${r.reason}` }, { quoted: msg });
             return;
           }
           await sock.sendMessage(
             remoteJid,
-            { text: `Ã°Å¸â€ºÂ¡Ã¯Â¸Â Kamu melindungi #${target + 1} (${existing.players[target].name}) malam ini.` },
+            { text: `🛡️ Kamu melindungi #${target + 1} (${existing.players[target].name}) malam ini.` },
             { quoted: msg },
           );
           return;
@@ -2919,26 +2865,26 @@ ${soal.soal}`,
         // ---- vote / unvote ----
         if (sub === 'vote' || sub === 'unvote') {
           if (existing.phase !== wv.PHASES.DAY) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Voting hanya saat siang hari.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Voting hanya saat siang hari.' }, { quoted: msg });
             return;
           }
           if (!me.alive) {
-            await sock.sendMessage(remoteJid, { text: 'Ã°Å¸â€™â‚¬ Pemain mati tidak bisa vote.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '💀 Pemain mati tidak bisa vote.' }, { quoted: msg });
             return;
           }
           if (sub === 'unvote') {
             wv.processVote(existing, playerIdx, -1);
-            await sock.sendMessage(remoteJid, { text: 'Ã¢â€ Â©Ã¯Â¸Â Vote dibatalkan.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '↩️ Vote dibatalkan.' }, { quoted: msg });
             return;
           }
           const target = parseTarget(arg1);
           if (target === null) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Target tidak valid. Contoh: /ww vote 2' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Target tidak valid. Contoh: /ww vote 2' }, { quoted: msg });
             return;
           }
           const r = wv.processVote(existing, playerIdx, target);
           if (!r.ok) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ ${r.reason}` }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: `❌ ${r.reason}` }, { quoted: msg });
             return;
           }
           const tally = wv.getVoteTally(existing);
@@ -2948,7 +2894,7 @@ ${soal.soal}`,
             remoteJid,
             {
               text:
-                `Ã°Å¸â€”Â³Ã¯Â¸Â Vote ke #${target + 1} (${existing.players[target].name}) dicatat.\n` +
+                `🗳️ Vote ke #${target + 1} (${existing.players[target].name}) dicatat.\n` +
                 `Progres: ${voted}/${aliveVoters} sudah vote.\n` +
                 `Tally saat ini: ${Object.entries(tally).map(([i, c]) => `#${Number(i) + 1}=${c}`).join(', ') || '-'}`,
             },
@@ -2960,24 +2906,24 @@ ${soal.soal}`,
         // ---- hunter shoot ----
         if (sub === 'shoot') {
           if (existing.pendingHunter !== playerIdx) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Kamu tidak punya hak menembak saat ini.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Kamu tidak punya hak menembak saat ini.' }, { quoted: msg });
             return;
           }
           const target = parseTarget(arg1);
           if (target === null) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Target tidak valid. Contoh: /ww shoot 3' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Target tidak valid. Contoh: /ww shoot 3' }, { quoted: msg });
             return;
           }
           const r = wv.processHunterShoot(existing, playerIdx, target);
           if (!r.ok) {
-            await sock.sendMessage(remoteJid, { text: `Ã¢ÂÅ’ ${r.reason}` }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: `❌ ${r.reason}` }, { quoted: msg });
             return;
           }
           const mentions = isGroup ? [existing.players[target.idx].jid] : undefined;
           await sock.sendMessage(
             remoteJid,
             {
-              text: `Ã°Å¸ÂÂ¹ *${me.name} menembak #${target + 1} (${r.target.name})!* Ã¢â‚¬â€ ${r.target.name} mati.`,
+              text: `🏹 *${me.name} menembak #${target + 1} (${r.target.name})!* — ${r.target.name} mati.`,
               mentions,
             },
             { quoted: msg },
@@ -2989,14 +2935,14 @@ ${soal.soal}`,
               Object.values(existing.timers).forEach((t) => t && clearTimeout(t));
               existing.timers = {};
             }
-            // Kirim ke chat sesi (group/PM) Ã¢â‚¬â€ kalau player shoot dari PM, kirim ke chat game
+            // Kirim ke chat sesi (group/PM) — kalau player shoot dari PM, kirim ke chat game
             const gameChat = found.key;
             await sock.sendMessage(
               gameChat,
               {
                 text:
-                  `Ã°Å¸ÂÂ *GAME BERAKHIR*\n\n${wv.getRoleRevealText(existing)}\n\n` +
-                  `Ã°Å¸Ââ€  Pemenang: *${win.winner}*\nÃ°Å¸â€œÂ ${win.reason}`,
+                  `🏁 *GAME BERAKHIR*\n\n${wv.getRoleRevealText(existing)}\n\n` +
+                  `🏆 Pemenang: *${win.winner}*\n📝 ${win.reason}`,
               },
             );
             gameSessions.delete(found.key);
@@ -3007,7 +2953,7 @@ ${soal.soal}`,
         // ---- host: manual phase transition ----
         if (sub === 'day' || sub === 'night') {
           if (existing.hostJid !== numberUser) {
-            await sock.sendMessage(remoteJid, { text: 'Ã¢ÂÅ’ Hanya host yang bisa pindah fase manual.' }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: '❌ Hanya host yang bisa pindah fase manual.' }, { quoted: msg });
             return;
           }
           if (sub === 'day' && existing.phase === wv.PHASES.NIGHT) {
@@ -3018,11 +2964,11 @@ ${soal.soal}`,
             await wvRunDayEnd();
             return;
           }
-          await sock.sendMessage(remoteJid, { text: `Ã¢Å¡Â Ã¯Â¸Â Tidak bisa pindah ke fase ${sub} dari fase ${existing.phase}.` }, { quoted: msg });
+          await sock.sendMessage(remoteJid, { text: `⚠️ Tidak bisa pindah ke fase ${sub} dari fase ${existing.phase}.` }, { quoted: msg });
           return;
         }
 
-        await sock.sendMessage(remoteJid, { text: `Ã¢Ââ€œ Sub-perintah tidak dikenal: *${sub}*\n\n${helpText}` }, { quoted: msg });
+        await sock.sendMessage(remoteJid, { text: `❓ Sub-perintah tidak dikenal: *${sub}*\n\n${helpText}` }, { quoted: msg });
         return;
       }
     } catch (error) {
@@ -3068,20 +3014,20 @@ ${soal.soal}`,
                 
                 const isGroup = remoteJid.endsWith('@g.us');
                 const chatSource = isGroup
-                  ? `Ã°Å¸â€œÂ *Lokasi:* Group (${remoteJid.split('@')[0]})`
-                  : `Ã°Å¸â€œÂ *Lokasi:* Private Chat (${remoteJid.split('@')[0]})`;
+                  ? `📍 *Lokasi:* Group (${remoteJid.split('@')[0]})`
+                  : `📍 *Lokasi:* Private Chat (${remoteJid.split('@')[0]})`;
                 
                 // Kirim ke owner
                 await sock.sendMessage(ownerJid, {
                   text: `${notification}\n\n${chatSource}`
                 });
                 
-                console.log(`Ã¢Å“â€¦ Pesan dihapus terdeteksi di ${remoteJid} dan dilaporkan ke owner ${OWNER_NUMBER}`);
+                console.log(`✅ Pesan dihapus terdeteksi di ${remoteJid} dan dilaporkan ke owner ${OWNER_NUMBER}`);
               } else {
-                console.log(`Ã¢Å¡Â Ã¯Â¸Â OWNER_NUMBER tidak diset, pesan dihapus di ${remoteJid} tidak dilaporkan`);
+                console.log(`⚠️ OWNER_NUMBER tidak diset, pesan dihapus di ${remoteJid} tidak dilaporkan`);
               }
             } else {
-              console.log(`Ã¢Å¡Â Ã¯Â¸Â Pesan dihapus terdeteksi (${messageId}) tapi data tidak ditemukan di cache`);
+              console.log(`⚠️ Pesan dihapus terdeteksi (${messageId}) tapi data tidak ditemukan di cache`);
             }
           } catch (err) {
             console.error('Error processing revoked message:', err);
@@ -3095,4 +3041,3 @@ ${soal.soal}`,
 }
 
 connectToWhatsApp();
-
