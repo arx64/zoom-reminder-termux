@@ -154,8 +154,8 @@ Matikan battery optimization untuk Termux lewat Settings Android agar proses leb
 Jika `npm install` gagal saat compile native module:
 
 ```bash
-pkg install -y nodejs-lts python make clang pkg-config sqlite openssl libjpeg-turbo libpng
-npm install --build-from-source
+pkg install -y nodejs-lts python make clang pkg-config git openssl libjpeg-turbo libpng sqlite
+npm_config_build_from_source=true npm install
 ```
 
 Jika QR tidak muncul:

@@ -87,8 +87,8 @@ Android bisa mematikan proses background. Opsi:
 `better-sqlite3` compile saat `npm install`. Jika gagal, jalankan ulang:
 
 ```bash
-pkg install -y nodejs-lts python make clang pkg-config sqlite
-npm install --build-from-source
+pkg install -y nodejs-lts python make clang pkg-config git openssl libjpeg-turbo libpng sqlite
+npm_config_build_from_source=true npm install
 ```
 
 Jika Baileys gagal install karena native module gambar, pastikan `libjpeg-turbo` dan `libpng` sudah terpasang.

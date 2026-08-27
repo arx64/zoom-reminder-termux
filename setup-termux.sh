@@ -9,11 +9,11 @@ pkg update -y
 echo "==> Install runtime dan build tools"
 pkg install -y nodejs-lts python make clang pkg-config git openssl libjpeg-turbo libpng sqlite
 
-echo "==> Upgrade npm"
-npm install -g npm@latest
-
 echo "==> Install Node dependencies"
-npm install --build-from-source
+if ! npm install; then
+  echo "==> npm install gagal. Coba ulang dengan build native dari source."
+  npm_config_build_from_source=true npm install
+fi
 
 if [ ! -f .env ]; then
   cp .env.termux.example .env
