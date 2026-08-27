@@ -7,20 +7,17 @@ echo "==> Update package index"
 pkg update -y
 
 echo "==> Install runtime dan build tools"
-pkg install -y nodejs-lts python make clang pkg-config git openssl libjpeg-turbo libpng sqlite
+pkg install -y nodejs-lts python make clang pkg-config git openssl libjpeg-turbo libpng
 
 echo "==> Install Node dependencies"
-if ! npm install; then
-  echo "==> npm install gagal. Coba ulang dengan build native dari source."
-  npm_config_build_from_source=true npm install
-fi
+npm install
 
 if [ ! -f .env ]; then
   cp .env.termux.example .env
   echo "==> .env dibuat dari .env.termux.example. Edit dulu sebelum login WhatsApp."
 fi
 
-mkdir -p auth_info_baileys logs tmp
+mkdir -p auth_info_baileys logs tmp data
 
 echo "==> Selesai"
 echo "Jalankan: npm run start:termux"

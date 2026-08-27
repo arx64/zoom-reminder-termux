@@ -5,6 +5,7 @@ migrations/
 auth_info_baileys/
 auth_info_baileysBYU/
 uploads/
+data/
 .env
 *.db
 whatsappbot-drive.json

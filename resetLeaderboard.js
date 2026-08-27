@@ -1,24 +1,7 @@
-import knex from 'knex';
-
-const knexInstance = knex({
-  client: 'better-sqlite3',
-  connection: {
-    filename: './leaderboard.db',
-  },
-  useNullAsDefault: true,
-});
+import db from './db.js';
 
 export async function resetLeaderboardTable() {
-  await knexInstance.schema.dropTableIfExists('leaderboard');
-
-  await knexInstance.schema.createTable('leaderboard', (table) => {
-    table.string('userJid');
-    table.string('chatId');
-    table.string('name');
-    table.integer('score').defaultTo(0);
-    table.primary(['chatId', 'userJid']);
-  });
-
+  await db.schema.dropTableIfExists('leaderboard');
   console.log('Tabel leaderboard berhasil dibuat ulang.');
 }
 

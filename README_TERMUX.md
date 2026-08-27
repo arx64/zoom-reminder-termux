@@ -64,7 +64,7 @@ Android bisa mematikan proses background. Opsi:
 - Reminder Zoom dan scheduler.
 - Notes.
 - Game JSON lokal.
-- Leaderboard SQLite memakai `better-sqlite3`.
+- Leaderboard memakai JSON storage tanpa native SQLite.
 - Auto view-once/story jika Baileys dan WhatsApp Web masih mendukung.
 - Edlink API HTTP jika token valid.
 - Google Drive upload jika OAuth token sudah dibuat.
@@ -82,13 +82,6 @@ Android bisa mematikan proses background. Opsi:
 - Untuk GUI Python: ubah jadi CLI, atau jalankan di laptop/desktop.
 - Untuk uptime stabil: deploy folder ini ke VPS Linux kecil, lalu pakai `pm2`/`systemd`.
 
-## Catatan dependency native
+## Catatan Dependency
 
-`better-sqlite3` compile saat `npm install`. Jika gagal, jalankan ulang:
-
-```bash
-pkg install -y nodejs-lts python make clang pkg-config git openssl libjpeg-turbo libpng sqlite
-npm_config_build_from_source=true npm install
-```
-
-Jika Baileys gagal install karena native module gambar, pastikan `libjpeg-turbo` dan `libpng` sudah terpasang.
+Versi Termux ini memakai JSON storage, jadi tidak perlu compile native SQLite. Data tersimpan di `data/termux-db.json`.

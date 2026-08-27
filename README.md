@@ -8,8 +8,7 @@ Folder ini tidak membawa file privat dari project utama:
 - `creds.json`
 - `auth_info_baileys`
 - `node_modules`
-- `reminders.db`
-- `leaderboard.db`
+- `data/termux-db.json`
 - `logs`
 
 File tersebut dibuat ulang di Android saat setup atau saat bot berjalan.
@@ -27,7 +26,7 @@ File tersebut dibuat ulang di Android saat setup atau saat bot berjalan.
 
 - Android dengan Termux dari F-Droid.
 - Koneksi internet stabil.
-- Ruang kosong cukup untuk dependency Node native.
+- Ruang kosong cukup untuk dependency Node.
 - WhatsApp aktif untuk scan QR login Baileys.
 
 ## Install Di Termux
@@ -130,7 +129,7 @@ Matikan battery optimization untuk Termux lewat Settings Android agar proses leb
 - Scheduler reminder.
 - Notes.
 - Game lokal berbasis JSON.
-- Leaderboard SQLite via `better-sqlite3`.
+- Leaderboard via JSON storage tanpa native SQLite.
 - Auto view-once/story jika WhatsApp Web dan Baileys masih mendukung.
 - Edlink scheduler jika token valid.
 - Google Drive upload jika OAuth sudah disiapkan.
@@ -151,11 +150,11 @@ Matikan battery optimization untuk Termux lewat Settings Android agar proses leb
 
 ## Troubleshooting
 
-Jika `npm install` gagal saat compile native module:
+Jika `npm install` gagal:
 
 ```bash
-pkg install -y nodejs-lts python make clang pkg-config git openssl libjpeg-turbo libpng sqlite
-npm_config_build_from_source=true npm install
+pkg install -y nodejs-lts python make clang pkg-config git openssl libjpeg-turbo libpng
+npm install
 ```
 
 Jika QR tidak muncul:
@@ -182,7 +181,7 @@ PORT=3001 npm run start:termux
 Jika database error, hapus database lokal dan start ulang:
 
 ```bash
-rm -f reminders.db leaderboard.db
+rm -f data/termux-db.json
 npm run start:termux
 ```
 
@@ -193,7 +192,6 @@ Jangan upload file ini ke GitHub publik:
 - `.env`
 - `creds.json`
 - `auth_info_baileys`
-- `reminders.db`
-- `leaderboard.db`
+- `data/termux-db.json`
 
 File tersebut berisi token, session WhatsApp, atau data pribadi.
