@@ -500,14 +500,14 @@ function cleanupKhsOutput() {
 // ===== MENU CONFIGURATION =====
 const MENU_CATEGORIES = {
   ai: {
-    emoji: 'Ã°Å¸Â¤â€“',
+    emoji: '[AI]',
     title: 'AI & CHAT',
     commands: [
       { cmd: '/ai [Pesan]', desc: 'Chat dengan AI' }
     ]
   },
   edlink: {
-    emoji: 'Ã°Å¸â€œÅ¡',
+    emoji: '[AKADEMIK]',
     title: 'AKADEMIK',
     commands: [
       { cmd: '/tugas', desc: 'Cek tugas/quiz terbuka dari EdLink' },
@@ -517,7 +517,7 @@ const MENU_CATEGORIES = {
     ]
   },
   reminder: {
-    emoji: 'Ã¢ÂÂ°',
+    emoji: '[REMINDER]',
     title: 'REMINDER',
     commands: [
       { cmd: '/list', desc: 'Lihat semua jadwal reminder' },
@@ -526,18 +526,18 @@ const MENU_CATEGORIES = {
     ]
   },
   group: {
-    emoji: 'Ã°Å¸â€˜Â¥',
+    emoji: '[GRUP]',
     title: 'GRUP MANAGEMENT',
     commands: [
       { cmd: '/add', desc: 'Tambah member ke grup' },
       { cmd: '/kick', desc: 'Keluarkan member dari grup' },
-      { cmd: '/tagall', desc: 'Tag semua member (hanya grup!)' },
+      { cmd: '/tagall', desc: 'Tag semua member (hanya grup)' },
       { cmd: '/new "Nama Grup"', desc: 'Buat grup baru dari file txt' },
       { cmd: '/getAllMember', desc: 'Export member grup ke txt' }
     ]
   },
   notes: {
-    emoji: 'Ã°Å¸â€œÂ',
+    emoji: '[NOTES]',
     title: 'NOTES',
     commands: [
       { cmd: '/notes <teks>', desc: 'Buat note baru' },
@@ -547,7 +547,7 @@ const MENU_CATEGORIES = {
     ]
   },
   scheduler: {
-    emoji: 'Ã°Å¸â€œÂ¨',
+    emoji: '[SEND]',
     title: 'PESAN TERJADWAL',
     commands: [
       { cmd: '/send <nomor>', desc: 'Jadwalkan kirim pesan ke nomor WA' },
@@ -556,7 +556,7 @@ const MENU_CATEGORIES = {
     ]
   },
   media: {
-    emoji: 'Ã°Å¸â€œÅ½',
+    emoji: '[MEDIA]',
     title: 'MEDIA & FILE',
     commands: [
       { cmd: '/see', desc: 'Kirim file sekali dilihat sebagai file biasa (reply pesan)' },
@@ -565,7 +565,7 @@ const MENU_CATEGORIES = {
     ]
   },
   owner: {
-    emoji: 'Ã°Å¸â€Â',
+    emoji: '[OWNER]',
     title: 'OWNER ONLY',
     commands: [
       { cmd: '/rahasia', desc: 'Lihat/edit konfigurasi .env via WhatsApp' },
@@ -574,7 +574,7 @@ const MENU_CATEGORIES = {
     ]
   },
   games: {
-    emoji: 'Ã°Å¸Å½Â®',
+    emoji: '[GAME]',
     title: 'PERMAINAN',
     commands: [
       { cmd: '/asahotak', desc: 'Asah Otak' },
@@ -600,24 +600,59 @@ const MENU_CATEGORIES = {
 };
 
 function generateMenu(userName, isGroup) {
-  let menu = `Ã¢â€¢â€Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢â€”\n`;
-  menu += `Ã¢â€¢â€˜  Ã°Å¸â€˜â€¹ Halo ${isGroup ? `@${userName}` : userName}!\n`;
-  menu += `Ã¢â€¢â€˜  Berikut adalah menu yang tersedia:\n`;
-  menu += `Ã¢â€¢Å¡Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â\n\n`;
+  const lines = [
+    '========================================',
+    `Halo ${isGroup ? `@${userName}` : userName}!`,
+    'Berikut menu yang tersedia:',
+    '========================================',
+    '',
+  ];
 
-  Object.values(MENU_CATEGORIES).forEach(category => {
-    menu += `${category.emoji} *${category.title}*\n`;
-    menu += `${'Ã¢â€â‚¬'.repeat(35)}\n`;
-    category.commands.forEach(cmd => {
-      menu += `  ${cmd.cmd}\n    Ã¢â€â€Ã¢â€â‚¬ ${cmd.desc}\n`;
+  Object.values(MENU_CATEGORIES).forEach((category) => {
+    lines.push(`${category.emoji} *${category.title}*`);
+    lines.push('----------------------------------------');
+    category.commands.forEach((command) => {
+      lines.push(`  ${command.cmd}`);
+      lines.push(`    - ${command.desc}`);
     });
-    menu += `\n`;
+    lines.push('');
   });
 
-  menu += `Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â\n`;
-  menu += `Ã°Å¸â€™Â¡ *Tips:* Ketik perintah untuk memulai!\n`;
+  lines.push('========================================');
+  lines.push('Tips: Ketik perintah untuk memulai.');
 
-  return menu;
+  return lines.join('\n');
+}
+
+const OUTBOUND_TEXT_KEYS = new Set(['text', 'caption', 'footer', 'title', 'subtitle']);
+
+function sanitizeOutboundText(value) {
+  return value
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '')
+    .replace(/A\?\?|A\?|\?+/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function sanitizeOutboundContent(content) {
+  if (!content || typeof content !== 'object' || Buffer.isBuffer(content)) return content;
+  if (Array.isArray(content)) return content.map(sanitizeOutboundContent);
+
+  const sanitized = { ...content };
+  for (const [key, value] of Object.entries(sanitized)) {
+    if (typeof value === 'string' && OUTBOUND_TEXT_KEYS.has(key)) {
+      sanitized[key] = sanitizeOutboundText(value);
+    } else if (value && typeof value === 'object' && !Buffer.isBuffer(value)) {
+      sanitized[key] = sanitizeOutboundContent(value);
+    }
+  }
+  return sanitized;
+}
+
+function patchSendMessageForCleanText(sock) {
+  const sendMessage = sock.sendMessage.bind(sock);
+  sock.sendMessage = (jid, content, options) => sendMessage(jid, sanitizeOutboundContent(content), options);
 }
 
 const app = express();
@@ -701,6 +736,8 @@ async function connectToWhatsApp() {
     connectTimeoutMs: 60_000,
     patchMessageBeforeSending: (msg) => msg,
   });
+
+  patchSendMessageForCleanText(sock);
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect } = update;
