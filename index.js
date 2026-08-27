@@ -36,6 +36,23 @@ import {
 } from './sendScheduler.js';
 import { cacheMessage, getCachedMessage, createDeletedMessageNotification } from './utils/deletedMessageHandler.js';
 
+function sanitizeLogValue(value) {
+  if (typeof value !== 'string') return value;
+  return value
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function patchConsoleForCleanText() {
+  for (const method of ['log', 'info', 'warn', 'error']) {
+    const original = console[method].bind(console);
+    console[method] = (...args) => original(...args.map(sanitizeLogValue));
+  }
+}
+
+patchConsoleForCleanText();
+
 let sock;
 let qrDataURL = null;
 let BOT_PHONE = ''; // nomor bot (untuk wa.me link), terisi saat koneksi open
