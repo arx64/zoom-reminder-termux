@@ -85,3 +85,27 @@ Android bisa mematikan proses background. Opsi:
 ## Catatan Dependency
 
 Versi Termux ini memakai JSON storage, jadi tidak perlu compile native SQLite. Data tersimpan di `data/termux-db.json`.
+
+## Update Dari GitHub
+
+Jika `git pull` gagal karena `package-lock.json` berubah di Termux, buang perubahan lockfile lokal lalu pull ulang:
+
+```bash
+cd ~/apps/zoom-reminder-termux
+git restore package-lock.json
+git pull
+rm -rf node_modules
+npm install
+npm run start:termux
+```
+
+Jika `git restore` tidak tersedia:
+
+```bash
+cd ~/apps/zoom-reminder-termux
+git checkout -- package-lock.json
+git pull
+rm -rf node_modules
+npm install
+npm run start:termux
+```

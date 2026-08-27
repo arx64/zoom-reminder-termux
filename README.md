@@ -148,6 +148,30 @@ Matikan battery optimization untuk Termux lewat Settings Android agar proses leb
 - GUI Python: ubah menjadi CLI, atau jalankan di desktop.
 - Uptime stabil: deploy ke VPS Linux kecil, lalu pakai `pm2` atau `systemd`.
 
+## Update Dari GitHub
+
+Jika `git pull` gagal karena `package-lock.json` berubah di Termux, buang perubahan lockfile lokal lalu pull ulang:
+
+```bash
+cd ~/apps/zoom-reminder-termux
+git restore package-lock.json
+git pull
+rm -rf node_modules
+npm install
+npm run start:termux
+```
+
+Jika `git restore` tidak tersedia:
+
+```bash
+cd ~/apps/zoom-reminder-termux
+git checkout -- package-lock.json
+git pull
+rm -rf node_modules
+npm install
+npm run start:termux
+```
+
 ## Troubleshooting
 
 Jika `npm install` gagal:
